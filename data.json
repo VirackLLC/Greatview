@@ -1,0 +1,41 @@
+{
+  "services": [
+    {
+      "title": "Pavers",
+      "icon": "grid",
+      "image": "https://r2-bucket.flowith.net/f/a278782335dffd8f/586458427_122113877895012245_2767165309102723694_n.jpg",
+      "description": "Precision-laid stone and brick pavers for driveways, walkways, and patios. Designed to withstand Phoenix heat while adding timeless value."
+    },
+    {
+      "title": "Artificial Turf",
+      "icon": "sprout",
+      "image": "https://r2-bucket.flowith.net/f/a017fddb66dbc203/559247616_122107584597012245_8187667375546942289_n.jpg",
+      "description": "High-grade synthetic grass that stays lush and green year-round without the maintenance or water costs. Perfect for families and pets."
+    },
+    {
+      "title": "Gravel",
+      "icon": "mountain",
+      "image": "https://r2-bucket.flowith.net/f/5a498135cbe6bcc4/586638354_122113878093012245_3861257617622704747_n.jpg",
+      "description": "Professional desert-scaping using premium Arizona river rock and decorative gravel. Clean, modern, and efficient xeriscaping."
+    },
+    {
+      "title": "Irrigation",
+      "icon": "droplets",
+      "image": "https://r2-bucket.flowith.net/f/5e5c0e6271c2e18d/image0.jpeg",
+      "description": "State-of-the-art drip systems and smart timers. We ensure your desert plants thrive while minimizing water waste."
+    },
+    {
+      "title": "Custom Designs",
+      "icon": "pen-tool",
+      "image": "https://r2-bucket.flowith.net/f/9f8fc9e0aef57e75/d6a5be2ce50ee4074fc4febcb4a067cb.jpg",
+      "description": "Comprehensive 3D blueprints and end-to-end builds. We turn your backyard vision into a custom-crafted luxury living space."
+    }
+  ],
+  "gallery": [
+    { "url": "https://r2-bucket.flowith.net/f/f8be9ee56cd17ed1/ac23cded8570c19a68cc3b88d13b6245.jpg", "title": "Phoenix Luxury Backyard" },
+    { "url": "https://r2-bucket.flowith.net/f/9f8fc9e0aef57e75/d6a5be2ce50ee4074fc4febcb4a067cb.jpg", "title": "Custom Hardscape Design" },
+    { "url": "https://r2-bucket.flowith.net/f/75cd91d416b39239/2d6e3b1dbb5674adc751738d03d98414.jpg", "title": "Precision Paver Patio" },
+    { "url": "https://r2-bucket.flowith.net/f/5e5c0e6271c2e18d/image0.jpeg", "title": "Arizona Native Garden" },
+    { "url": "https://r2-bucket.flowith.net/f/5a498135cbe6bcc4/586638354_122113878093012245_3861257617622704747_n.jpg", "title": "Decorative Gravel Work" }
+  ]
+}

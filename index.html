@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Greatview Hardscape | Design • Build • Hardscape Phoenix</title>
+    <meta name="description" content="Premium Phoenix Hardscaping: Pavers, Artificial Turf, Gravel, Irrigation, and Custom Designs in the Greater Phoenix Area. We Build Memories.">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="style.css">
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    <!-- Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Animation Libs -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+</head>
+<body class="bg-stone-50 text-charcoal selection:bg-copper selection:text-white overflow-x-hidden">
+
+    <!-- Sticky "Get a Quote" Button -->
+    <div id="sticky-cta" class="fixed bottom-6 right-6 z-[60] transform translate-y-24 opacity-0 transition-all duration-500">
+        <button onclick="openModal()" class="bg-copper text-white flex items-center gap-3 px-6 py-4 rounded-full shadow-2xl hover:bg-charcoal transition-all group">
+            <span class="font-bold uppercase tracking-widest text-xs">Get a Quote</span>
+            <i data-lucide="calendar-plus" class="w-5 h-5 group-hover:scale-110 transition-transform"></i>
+        </button>
+    </div>
+
+    <!-- Modal for Consultation -->
+    <div id="quote-modal" class="fixed inset-0 z-[100] hidden items-center justify-center p-4 bg-charcoal/80 backdrop-blur-md">
+        <div class="bg-white w-full max-w-xl rounded-2xl overflow-hidden shadow-2xl relative">
+            <button onclick="closeModal()" class="absolute top-4 right-4 text-stone-400 hover:text-charcoal transition-colors">
+                <i data-lucide="x" class="w-6 h-6"></i>
+            </button>
+            <div id="modal-content" class="p-8 md:p-12 text-center">
+                <div id="form-container">
+                    <h3 class="text-3xl font-serif mb-2 text-left">Request a Consultation</h3>
+                    <p class="text-stone-500 text-sm mb-8 uppercase tracking-widest text-left">Design • Build • Hardscape</p>
+                    <form id="modal-quote-form" class="space-y-4 text-left">
+                        <input type="text" placeholder="Your Name" required class="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-lg outline-none focus:border-copper">
+                        <input type="tel" placeholder="Phone Number" required class="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-lg outline-none focus:border-copper">
+                        <input type="email" placeholder="Email Address" required class="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-lg outline-none focus:border-copper">
+                        <select class="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-lg outline-none focus:border-copper">
+                            <option>Pavers</option>
+                            <option>Artificial Turf</option>
+                            <option>Gravel</option>
+                            <option>Irrigation</option>
+                            <option>Custom Designs</option>
+                        </select>
+                        <textarea rows="3" placeholder="Describe your dream backyard..." class="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-lg outline-none focus:border-copper"></textarea>
+                        <button type="submit" class="w-full bg-copper text-white py-4 rounded-lg font-bold uppercase tracking-widest hover:bg-charcoal transition-all">Submit Request</button>
+                    </form>
+                </div>
+                <!-- Success Message (Hidden by default) -->
+                <div id="success-message" class="hidden py-12">
+                    <div class="bg-green-100 text-green-700 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <i data-lucide="check" class="w-8 h-8"></i>
+                    </div>
+                    <h3 class="text-3xl font-serif mb-4">Message Sent!</h3>
+                    <p class="text-stone-500 mb-8 leading-relaxed">Thank you for reaching out to Greatview Hardscape. We'll be in touch within 24 hours to discuss your project.</p>
+                    <button onclick="closeModal()" class="px-8 py-3 bg-charcoal text-white rounded-full uppercase tracking-widest text-xs font-bold">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lightbox -->
+    <div id="lightbox" class="fixed inset-0 z-[110] bg-black/95 hidden items-center justify-center p-4 cursor-zoom-out" onclick="closeLightbox()">
+        <img id="lightbox-img" src="" alt="Gallery Preview" class="max-w-full max-h-full object-contain rounded-sm shadow-2xl transition-transform duration-300">
+        <button class="absolute top-8 right-8 text-white"><i data-lucide="x" class="w-8 h-8"></i></button>
+    </div>
+
+    <!-- Header -->
+    <header id="main-header" class="fixed w-full z-50 transition-all duration-300 py-4 px-6 md:px-12">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <a href="#" class="flex items-center gap-3 group">
+                <img src="https://r2-bucket.flowith.net/f/3e2f7436589d7f1c/greatview_hardscape_logo_design_index_0.jpeg" alt="Greatview Hardscape" class="h-14 w-14 rounded-full object-cover border-2 border-copper transition-transform group-hover:scale-105 shadow-md">
+                <div class="hidden sm:block">
+                    <span class="block text-xl font-bold tracking-tighter uppercase leading-none">Greatview</span>
+                    <span class="block text-[10px] uppercase tracking-[0.3em] text-copper font-medium">Hardscape</span>
+                </div>
+            </a>
+
+            <nav class="hidden md:flex items-center gap-8 text-xs font-bold uppercase tracking-widest">
+                <a href="#services" class="hover:text-copper transition-colors">Services</a>
+                <a href="#gallery" class="hover:text-copper transition-colors">Our Work</a>
+                <a href="tel:480-846-6056" class="flex items-center gap-2 text-copper hover:scale-105 transition-transform">
+                    <i data-lucide="phone" class="w-4 h-4"></i>
+                    480-846-6056
+                </a>
+            </nav>
+
+            <button onclick="openModal()" class="bg-copper text-white px-6 py-3 rounded-full text-xs font-bold uppercase tracking-widest hover:bg-charcoal transition-all shadow-lg">
+                Get Quote
+            </button>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="relative h-screen flex items-center overflow-hidden">
+        <div class="absolute inset-0 z-0">
+            <img src="https://r2-bucket.flowith.net/f/f8be9ee56cd17ed1/ac23cded8570c19a68cc3b88d13b6245.jpg" alt="Phoenix Hardscaping Project" class="w-full h-full object-cover brightness-[0.5]">
+            <div class="absolute inset-0 bg-gradient-to-b from-charcoal/40 via-transparent to-stone-50/10"></div>
+        </div>
+        
+        <div class="relative z-10 max-w-7xl mx-auto px-6 md:px-12 w-full pt-20">
+            <div class="max-w-4xl hero-reveal">
+                <p class="text-copper font-bold tracking-[0.4em] uppercase mb-4 text-sm">Design • Build • Hardscape</p>
+                <h1 class="text-6xl md:text-9xl font-serif text-white leading-[0.9] mb-8">
+                    We Build <br><span class="italic text-sandstone">Memories.</span>
+                </h1>
+                <p class="text-stone-200 text-lg md:text-2xl mb-12 leading-relaxed font-light max-w-2xl">
+                    Creating the backdrop for your family's best moments. Professional pavers, turf, and custom outdoor living across the Greater Phoenix Area.
+                </p>
+                <div class="flex flex-col sm:flex-row gap-6">
+                    <button onclick="openModal()" class="bg-copper text-white px-12 py-6 rounded-sm text-sm font-bold uppercase tracking-[0.2em] hover:bg-white hover:text-charcoal transition-all text-center">
+                        Free Consultation
+                    </button>
+                    <a href="tel:480-846-6056" class="flex items-center justify-center gap-3 text-white border border-white/40 px-10 py-6 hover:bg-white/10 transition-all font-bold text-sm tracking-widest uppercase backdrop-blur-sm">
+                        <i data-lucide="phone-call" class="w-5 h-5 text-copper"></i>
+                        480-846-6056
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Project Highlight (Before/After vibe) -->
+    <section class="py-24 bg-white">
+        <div class="max-w-7xl mx-auto px-6 md:px-12">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+                <div class="reveal-left">
+                    <h2 class="text-copper font-bold tracking-widest uppercase mb-4">Project Spotlight</h2>
+                    <h3 class="text-4xl md:text-5xl font-serif text-charcoal mb-8">From Concept to Reality</h3>
+                    <p class="text-stone-500 text-lg mb-8 leading-relaxed italic">
+                        "Greatview transformed our dusty backyard into an oasis. The attention to detail with the pavers and irrigation layout was world-class."
+                    </p>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-stone-50 p-6 border-l-4 border-copper">
+                            <span class="block text-2xl font-bold text-charcoal">100+</span>
+                            <span class="text-xs uppercase tracking-widest text-stone-400">Projects Completed</span>
+                        </div>
+                        <div class="bg-stone-50 p-6 border-l-4 border-copper">
+                            <span class="block text-2xl font-bold text-charcoal">5 Star</span>
+                            <span class="text-xs uppercase tracking-widest text-stone-400">Customer Rating</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="relative reveal-right group">
+                    <div class="overflow-hidden rounded-2xl shadow-2xl">
+                        <img src="https://r2-bucket.flowith.net/f/75cd91d416b39239/2d6e3b1dbb5674adc751738d03d98414.jpg" alt="Featured Project Phoenix" class="w-full transition-transform duration-700 group-hover:scale-105">
+                    </div>
+                    <div class="absolute -bottom-6 -right-6 bg-copper text-white p-8 rounded-2xl shadow-xl hidden md:block">
+                        <p class="text-xs font-bold uppercase tracking-widest">Service Used</p>
+                        <p class="text-xl font-serif italic">Pavers & Custom Design</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Services Section -->
+    <section id="services" class="py-24 bg-stone-100">
+        <div class="max-w-7xl mx-auto px-6 md:px-12 text-center mb-16 section-header">
+            <h2 class="text-xs font-bold uppercase tracking-[0.4em] text-copper mb-4">Expertise</h2>
+            <h3 class="text-4xl md:text-5xl font-serif text-charcoal">Our Core Services</h3>
+            <p class="mt-4 text-stone-500 max-w-xl mx-auto">Design • Build • Hardscape tailored for the Arizona climate.</p>
+        </div>
+        <div id="services-grid" class="max-w-7xl mx-auto px-6 md:px-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <!-- Dynamic Injection from main.js -->
+        </div>
+    </section>
+
+    <!-- Portfolio Gallery -->
+    <section id="gallery" class="py-24 bg-charcoal text-white">
+        <div class="max-w-7xl mx-auto px-6 md:px-12 mb-16 section-header">
+            <h2 class="text-xs font-bold uppercase tracking-[0.4em] text-copper mb-4">The Gallery</h2>
+            <h3 class="text-4xl md:text-5xl font-serif italic mb-6">Built in the Phoenix Sun</h3>
+            <p class="text-stone-400 max-w-2xl text-sm uppercase tracking-widest leading-loose">
+                Professional craftsmanship in every stone, blade of turf, and drop of water. 
+            </p>
+        </div>
+        <div id="gallery-grid" class="max-w-7xl mx-auto px-6 md:px-12 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            <!-- Dynamic Injection from main.js -->
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-charcoal text-white pt-24 pb-12 px-6 md:px-12 border-t border-white/5">
+        <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-16 mb-20 text-center md:text-left">
+            <div class="md:col-span-2">
+                <div class="flex items-center gap-4 mb-8 justify-center md:justify-start">
+                    <img src="https://r2-bucket.flowith.net/f/3e2f7436589d7f1c/greatview_hardscape_logo_design_index_0.jpeg" alt="Greatview" class="h-16 w-16 rounded-full border border-copper/50 p-1">
+                    <div class="text-left">
+                        <h4 class="text-2xl font-serif">Greatview Hardscape</h4>
+                        <p class="text-copper text-xs uppercase tracking-[0.3em]">Design • Build • Hardscape</p>
+                    </div>
+                </div>
+                <p class="text-stone-400 max-w-sm mb-8 leading-relaxed italic mx-auto md:mx-0">
+                    "We Build Memories" — Crafting the backdrops for your family's favorite moments in the Arizona sun.
+                </p>
+            </div>
+            
+            <div>
+                <h5 class="text-xs font-bold uppercase tracking-[0.2em] text-copper mb-8">Quick Connect</h5>
+                <ul class="space-y-6">
+                    <li>
+                        <a href="tel:480-846-6056" class="flex flex-col group items-center md:items-start">
+                            <span class="text-xs uppercase text-stone-500 mb-1">Direct Line</span>
+                            <span class="text-lg font-serif group-hover:text-copper transition-colors underline decoration-copper/30 decoration-2 italic">480-846-6056</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="mailto:greatview.hardscape@gmail.com" class="flex flex-col group items-center md:items-start">
+                            <span class="text-xs uppercase text-stone-500 mb-1">Email Inquiry</span>
+                            <span class="text-sm font-medium group-hover:text-copper transition-colors break-all underline decoration-copper/30 decoration-2">greatview.hardscape@gmail.com</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <div>
+                <h5 class="text-xs font-bold uppercase tracking-[0.2em] text-copper mb-8">Location</h5>
+                <p class="text-stone-400 text-sm leading-relaxed mb-4">
+                    Serving the Greater Phoenix Area<br>
+                    Scottsdale, Mesa, Chandler, Gilbert
+                </p>
+                <div class="flex items-center gap-2 text-stone-500 text-[10px] uppercase font-bold tracking-widest justify-center md:justify-start">
+                    <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                    Accepting New Leads
+                </div>
+            </div>
+        </div>
+        <div class="max-w-7xl mx-auto pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between text-stone-500 text-[10px] uppercase tracking-[0.3em] gap-4 text-center md:text-left">
+            <p>© 2026 Greatview Hardscape. ROC Pending.</p>
+            <div class="flex gap-8 justify-center">
+                <a href="#services" class="hover:text-white transition-colors">Services</a>
+                <a href="#gallery" class="hover:text-white transition-colors">Projects</a>
+            </div>
+        </div>
+    </footer>
+
+    <script type="module" src="main.js"></script>
+    <script>
+        function openModal() {
+            const modal = document.getElementById('quote-modal');
+            const formContainer = document.getElementById('form-container');
+            const successMsg = document.getElementById('success-message');
+            formContainer.classList.remove('hidden');
+            successMsg.classList.add('hidden');
+            modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+            gsap.fromTo(modal.children[0], { scale: 0.9, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.4 });
+        }
+        function closeModal() {
+            const modal = document.getElementById('quote-modal');
+            gsap.to(modal.children[0], { scale: 0.9, opacity: 0, duration: 0.3, onComplete: () => {
+                modal.style.display = 'none';
+                document.body.style.overflow = 'auto';
+            }});
+        }
+    </script>
+</body>
+</html>

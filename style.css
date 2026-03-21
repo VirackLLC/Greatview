@@ -1,0 +1,78 @@
+:root {
+    --copper: #c57b57;
+    --charcoal: #1c1c1c;
+    --sandstone: #e2d1c3;
+    --stone-50: #fcfaf8;
+}
+
+body {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+h1, h2, h3, h4, h5, .font-serif {
+    font-family: 'Playfair Display', serif;
+}
+
+.text-copper { color: var(--copper); }
+.bg-copper { background-color: var(--copper); }
+.border-copper { border-color: var(--copper); }
+.text-charcoal { color: var(--charcoal); }
+.bg-charcoal { background-color: var(--charcoal); }
+
+/* Custom Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--stone-50); }
+::-webkit-scrollbar-thumb { background: var(--copper); border-radius: 10px; }
+
+/* Header Scroll States */
+header.scrolled {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    padding: 0.75rem 1.5rem;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.05);
+    color: var(--charcoal);
+}
+
+header.scrolled nav a { color: var(--charcoal); }
+header.scrolled .logo-text { color: var(--charcoal); }
+
+/* Sticky CTA Pop-in Animation */
+#sticky-cta {
+    filter: drop-shadow(0 20px 30px rgba(197, 123, 87, 0.3));
+}
+
+/* Modal Styling */
+#quote-modal {
+    transition: all 0.3s ease;
+}
+
+/* SEO Section Hover */
+.service-areas-grid div:hover {
+    transform: translateY(-5px);
+    border-color: var(--copper);
+}
+
+/* Animation Classes for JS */
+.reveal-left { opacity: 0; transform: translateX(-30px); }
+.reveal-right { opacity: 0; transform: translateX(30px); }
+.hero-reveal { opacity: 0; transform: translateY(40px); }
+.section-header { opacity: 0; transform: translateY(20px); }
+
+/* Lightbox Specifics */
+#lightbox-img {
+    box-shadow: 0 0 60px rgba(0,0,0,0.5);
+    pointer-events: none;
+}
+
+/* Mobile Adjustments */
+@media (max-width: 640px) {
+    h1 { font-size: 3.5rem !important; }
+}
+
+/* Button & Input Smoothness */
+input, select, textarea {
+    transition: all 0.2s ease-in-out;
+}
+input:focus {
+    box-shadow: 0 0 0 4px rgba(197, 123, 87, 0.15);
+}
