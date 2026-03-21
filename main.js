@@ -40,24 +40,51 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
 
-    const modalForm = document.getElementById('modal-quote-form');
-    modalForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const btn = modalForm.querySelector('button');
-        const originalText = btn.innerText;
-        btn.innerText = 'PROCESSING...';
-        btn.disabled = true;
+const modalForm = document.getElementById('modal-quote-form');
 
+modalForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
 
-        setTimeout(() => {
+    const btn = modalForm.querySelector('button');
+    const originalText = btn.innerText;
+
+    btn.innerText = 'PROCESSING...';
+    btn.disabled = true;
+
+    const formData = {
+        name: modalForm.querySelector('input[placeholder="Your Name"]').value,
+        phone: modalForm.querySelector('input[placeholder="Phone Number"]').value,
+        email: modalForm.querySelector('input[placeholder="Email Address"]').value,
+        service: modalForm.querySelector('select').value,
+        message: modalForm.querySelector('textarea').value
+    };
+
+    try {
+        const res = await fetch('/api/quote', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(formData)
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
             document.getElementById('form-container').classList.add('hidden');
             document.getElementById('success-message').classList.remove('hidden');
             modalForm.reset();
-            btn.innerText = originalText;
-            btn.disabled = false;
-            lucide.createIcons();
-        }, 1200);
-    });
+        } else {
+            alert(data.error || 'Something went wrong.');
+        }
+
+    } catch (err) {
+        alert('Network error.');
+    }
+
+    btn.innerText = originalText;
+    btn.disabled = false;
+});
 
 
     gsap.utils.toArray('.reveal-left, .reveal-right, .section-header').forEach(el => {
