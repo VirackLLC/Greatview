@@ -166,7 +166,7 @@ function getFallbackServices() {
             title: "Custom Designs",
             icon: "pen-tool",
             image: "https://r2-bucket.flowith.net/f/9f8fc9e0aef57e75/d6a5be2ce50ee4074fc4febcb4a067cb.jpg",
-            description: "Comprehensive 3D blueprints and end-to-end builds. We turn your backyard vision into a custom-crafted luxury living space."
+            description: "Custom outdoor living spaces built from start to finish. We create functional, clean backyard environments designed for everyday living."
         }
     ];
 }
