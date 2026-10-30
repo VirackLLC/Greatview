@@ -76,3 +76,11 @@ input, select, textarea {
 input:focus {
     box-shadow: 0 0 0 4px rgba(197, 123, 87, 0.15);
 }
+
+[hidden] { display: none !important; }
+.business-license { background: #fcfaf8; border-bottom: 1px solid #e2d1c3; color: #1c1c1c; padding: 2rem 1.5rem; }
+.business-license-inner { max-width: 1184px; margin: auto; display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; flex-wrap: wrap; }
+.license-label { font-size: .75rem; text-transform: uppercase; letter-spacing: .15em; margin-bottom: .5rem; }
+.license-business-name { font-size: 1.25rem; font-weight: 700; overflow-wrap: anywhere; }
+.license-number { font-size: 1.5rem; font-weight: 700; margin-top: .25rem; }
+.business-license a { color: #8c4d30; text-decoration: underline; text-underline-offset: .25rem; font-size: .95rem; padding: .75rem 0; }
