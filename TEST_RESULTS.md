@@ -24,7 +24,7 @@
 
 No Supabase project or approved owner/editor email addresses were supplied/connected. Therefore real password login/reset email delivery, remote Storage persistence across deployments, and enforcement of the supplied policies on a hosted Supabase project remain unverified.
 
-No GitHub push, Vercel Preview build or production deployment was performed. The local Vercel-compatible build passes; actual Vercel routing, function packaging and headers must be checked on an authorized preview.
+The tested changes were pushed to `feature/owner-photo-manager` only. No Vercel Preview build or production deployment was performed. The local Vercel-compatible build passes; actual Vercel routing, function packaging and headers must be checked on an authorized preview.
 
 No real quote or sign-in emails were sent. The original production Resend credentials were not accessed. Actual Resend delivery requires a controlled staging/sandbox test with an approved recipient.
 
