@@ -57,6 +57,49 @@ try {
       expect(state.resetRequests).toBe(1);
     });
     await signIn(page, `${role}@example.invalid`);
+    await expect(page.locator('#password-recovery-panel')).toBeVisible();
+    await expect(page.locator('#password-recovery-intro')).toContainText('first sign-in');
+    await page.locator('#new-password').fill('preview-only-first-password');
+    await page.locator('#confirm-password').fill('preview-only-first-password');
+    await page.locator('#save-password').click();
+    await expect(page.locator('#editor')).toBeVisible();
+    await check(`${name}: first sign-in requires a new password before editing`, async () => {
+      expect(state.passwordUpdates).toBe(1);
+      expect(state.passwordSetupCompletions).toBe(1);
+      expect(state.passwordChangeRequired).toBe(false);
+      await expect(page.locator('#account-role')).toHaveText(role === 'owner' ? 'Permanent owner' : 'Temporary editor');
+    });
+    await page.locator('#change-password').click();
+    await expect(page.locator('#cancel-password-change')).toBeVisible();
+    await page.locator('#new-password').fill('preview-only-cancel-password');
+    await page.locator('#confirm-password').fill('preview-only-cancel-password');
+    await page.locator('#cancel-password-change').click();
+    await expect(page.locator('#editor')).toBeVisible();
+    await check(`${name}: password change can be cancelled without logging out`, async () => {
+      expect(state.passwordUpdates).toBe(1);
+    });
+    await page.locator('#change-password').click();
+    await page.locator('#new-password').fill('preview-only-manual-password');
+    await page.locator('#confirm-password').fill('preview-only-manual-password');
+    await page.locator('#save-password').click();
+    await expect(page.locator('#editor')).toBeVisible();
+    await check(`${name}: either role can change its password from account settings`, async () => {
+      expect(state.passwordUpdates).toBe(2);
+    });
+    if (role === 'owner') {
+      await expect(page.locator('#remove-temporary-editor')).toBeVisible();
+      page.once('dialog', dialog => dialog.accept());
+      await page.locator('#remove-temporary-editor').click();
+      await check(`${name}: permanent owner can remove temporary website access`, async () => {
+        expect(state.temporaryEditorActive).toBe(false);
+        await expect(page.locator('#temporary-editor-status')).toContainText('can no longer update');
+        await expect(page.locator('#remove-temporary-editor')).toBeHidden();
+      });
+    } else {
+      await check(`${name}: temporary editor cannot see account-removal controls`, async () => {
+        await expect(page.locator('#remove-temporary-editor')).toBeHidden();
+      });
+    }
     await page.goto(`${baseURL}/admin?recover=1`);
     await expect(page.locator('#password-recovery-panel')).toBeVisible();
     await page.locator('#new-password').fill('preview-only-new-password');
@@ -64,7 +107,7 @@ try {
     await page.locator('#save-password').click();
     await expect(page.locator('#editor')).toBeVisible();
     await check(`${name}: secure recovery session can set a new password`, async () => {
-      expect(state.passwordUpdates).toBe(1);
+      expect(state.passwordUpdates).toBe(3);
     });
     await page.locator('#logout').click();
     await signIn(page, `${role}@example.invalid`);
@@ -173,7 +216,7 @@ try {
     await expect(page.locator('#login-panel')).toBeVisible();
     await expect(page.locator('#editor')).toBeHidden();
     await check(`${name}: unapproved signed-in account cannot open editor`, async () => {
-      state.canEdit = false;
+      state.hasAccess = false;
       await signIn(page, `${role}@example.invalid`);
       await expect(page.locator('#login-status')).toContainText('does not have edit access');
       await expect(page.locator('#editor')).toBeHidden();

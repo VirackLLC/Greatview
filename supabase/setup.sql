@@ -6,12 +6,14 @@ create schema if not exists app_private;
 revoke all on schema app_private from public, anon, authenticated;
 drop policy if exists "Owner uploads new website photos" on storage.objects;
 drop function if exists public.publish_site(jsonb, integer);
-drop function if exists public.is_site_owner();
 
 create table if not exists app_private.site_editors (
   user_id uuid primary key references auth.users(id) on delete cascade,
-  role text not null unique check (role in ('owner', 'editor'))
+  role text not null unique check (role in ('owner', 'editor')),
+  password_change_required boolean not null default true
 );
+alter table app_private.site_editors
+  add column if not exists password_change_required boolean not null default true;
 alter table app_private.site_editors enable row level security;
 revoke all on app_private.site_editors from public, anon, authenticated;
 
@@ -28,13 +30,49 @@ begin
 end;
 $$;
 
-create or replace function public.can_edit_site()
+create or replace function public.has_site_access()
 returns boolean language sql stable security definer set search_path = ''
 as $$
   select exists (select 1 from app_private.site_editors where user_id = auth.uid());
 $$;
+revoke all on function public.has_site_access() from public, anon;
+grant execute on function public.has_site_access() to authenticated;
+
+create or replace function public.needs_password_change()
+returns boolean language sql stable security definer set search_path = ''
+as $$
+  select coalesce((
+    select password_change_required from app_private.site_editors where user_id = auth.uid()
+  ), false);
+$$;
+revoke all on function public.needs_password_change() from public, anon;
+grant execute on function public.needs_password_change() to authenticated;
+
+create or replace function public.can_edit_site()
+returns boolean language sql stable security definer set search_path = ''
+as $$
+  select exists (
+    select 1 from app_private.site_editors
+    where user_id = auth.uid() and not password_change_required
+  );
+$$;
 revoke all on function public.can_edit_site() from public, anon;
 grant execute on function public.can_edit_site() to authenticated;
+
+create or replace function public.complete_password_setup()
+returns boolean language plpgsql security definer set search_path = ''
+as $$
+declare updated_count integer;
+begin
+  update app_private.site_editors
+    set password_change_required = false
+    where user_id = auth.uid();
+  get diagnostics updated_count = row_count;
+  return updated_count = 1;
+end;
+$$;
+revoke all on function public.complete_password_setup() from public, anon;
+grant execute on function public.complete_password_setup() to authenticated;
 
 create or replace function public.is_site_owner()
 returns boolean language sql stable security definer set search_path = ''
@@ -46,6 +84,35 @@ as $$
 $$;
 revoke all on function public.is_site_owner() from public, anon;
 grant execute on function public.is_site_owner() to authenticated;
+
+create or replace function public.temporary_editor_active()
+returns boolean language plpgsql security definer set search_path = ''
+as $$
+begin
+  if not public.is_site_owner() then
+    raise exception 'Only the permanent owner can manage temporary access' using errcode = '42501';
+  end if;
+  return exists (select 1 from app_private.site_editors where role = 'editor');
+end;
+$$;
+revoke all on function public.temporary_editor_active() from public, anon;
+grant execute on function public.temporary_editor_active() to authenticated;
+
+create or replace function public.remove_temporary_editor()
+returns boolean language plpgsql security definer set search_path = ''
+as $$
+declare removed_count integer;
+begin
+  if not public.is_site_owner() then
+    raise exception 'Only the permanent owner can remove temporary access' using errcode = '42501';
+  end if;
+  delete from app_private.site_editors where role = 'editor';
+  get diagnostics removed_count = row_count;
+  return removed_count = 1;
+end;
+$$;
+revoke all on function public.remove_temporary_editor() from public, anon;
+grant execute on function public.remove_temporary_editor() to authenticated;
 
 create table if not exists public.site_content (
   id integer primary key check (id = 1),

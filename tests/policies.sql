@@ -38,8 +38,20 @@ do $$ begin
 exception when insufficient_privilege then raise notice 'PASS: unapproved account uploads denied'; end $$;
 
 select set_config('request.jwt.claim.sub', '22222222-2222-4222-a222-222222222222', false);
-select public.test_assert(public.can_edit_site(), 'temporary editor is authorized');
+select public.test_assert(public.has_site_access(), 'temporary editor is on the private allowlist');
+select public.test_assert(public.needs_password_change(), 'temporary editor must change the initial password');
+select public.test_assert(not public.can_edit_site(), 'temporary editor cannot edit before changing the initial password');
+select public.test_assert(public.complete_password_setup(), 'temporary editor can complete their own password setup');
+select public.test_assert(public.can_edit_site(), 'temporary editor is authorized after password setup');
 select public.test_assert(not public.is_site_owner(), 'temporary editor is not the permanent owner');
+do $$ begin
+  perform public.temporary_editor_active();
+  raise exception 'temporary editor inspected owner-only access';
+exception when insufficient_privilege then raise notice 'PASS: temporary editor cannot inspect owner access'; end $$;
+do $$ begin
+  perform public.remove_temporary_editor();
+  raise exception 'temporary editor removed their own access';
+exception when insufficient_privilege then raise notice 'PASS: temporary editor cannot remove access'; end $$;
 select public.test_assert(
   public.publish_site(jsonb_set((select content from public.site_content where id=1), '{serviceArea,region}', '"East Valley"'), 1) = 2,
   'temporary editor can publish a service-area edit'
@@ -51,8 +63,13 @@ do $$ begin
 exception when insufficient_privilege then raise notice 'PASS: editor can only upload to own folder'; end $$;
 
 select set_config('request.jwt.claim.sub', '11111111-1111-4111-a111-111111111111', false);
-select public.test_assert(public.can_edit_site(), 'permanent owner is authorized');
+select public.test_assert(public.has_site_access(), 'permanent owner is on the private allowlist');
+select public.test_assert(public.needs_password_change(), 'permanent owner must change the initial password');
+select public.test_assert(not public.can_edit_site(), 'permanent owner cannot edit before changing the initial password');
+select public.test_assert(public.complete_password_setup(), 'permanent owner can complete their own password setup');
+select public.test_assert(public.can_edit_site(), 'permanent owner is authorized after password setup');
 select public.test_assert(public.is_site_owner(), 'permanent owner recognized');
+select public.test_assert(public.temporary_editor_active(), 'permanent owner can check temporary access');
 do $$ begin
   update public.site_content set content = '{}';
   raise exception 'direct update unexpectedly allowed';
@@ -97,9 +114,11 @@ delete from storage.objects;
 reset role;
 select public.test_assert((select count(*) = 2 from storage.objects), 'files cannot be accidentally deleted by the browser');
 
-delete from app_private.site_editors where role = 'editor';
+set role authenticated;
+select public.test_assert(public.remove_temporary_editor(), 'permanent owner can remove the temporary editor');
 select public.test_assert(public.can_edit_site() and public.is_site_owner(), 'removing the temporary editor leaves owner access intact');
 select public.test_assert((select version = 5 from public.site_content), 'revoking the editor preserves published content');
+reset role;
 set role anon;
 select public.test_assert((select content->'license'->>'number' = '001234' and version=5 from public.site_content), 'public visitors see the saved license and current version');
 select public.test_assert((select content->'serviceArea'->>'region' = 'East Valley' from public.site_content), 'public visitors see the published service area');

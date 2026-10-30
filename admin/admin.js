@@ -5,6 +5,7 @@ import { optimizePhoto } from './photos.js';
 const $ = id => document.getElementById(id);
 let client, user, content, savedContent, version, selected, uploadTarget, draggedId;
 let busy = false, dirty = false, authGeneration = 0, recoveryMode = false;
+let isOwner = false, openingSessionId = null, passwordFlow = null;
 const clone = value => JSON.parse(JSON.stringify(value));
 const disabledStates = new WeakMap();
 
@@ -33,6 +34,14 @@ function setBusy(value) {
 function showPanel(id) {
   for (const panel of ['login-panel', 'password-recovery-panel', 'setup-panel', 'editor', 'loading-status']) $(panel).hidden = panel !== id;
 }
+function showPasswordPanel(flow) {
+  passwordFlow = flow;
+  $('password-recovery-intro').textContent = flow === 'initial'
+    ? 'This is your first sign-in. Choose a private password before continuing.'
+    : 'Use a strong password you do not use on another website.';
+  $('cancel-password-change').hidden = flow !== 'manual';
+  showPanel('password-recovery-panel');
+}
 
 async function start() {
   try {
@@ -47,21 +56,22 @@ async function start() {
       if (event === 'SIGNED_OUT') {
         authGeneration++;
         user = content = savedContent = null; dirty = false;
+        isOwner = false; openingSessionId = null; passwordFlow = null;
         $('photo-dialog').close();
         $('main-photos').replaceChildren(); $('gallery-photos').replaceChildren(); $('featured-photos').replaceChildren();
-          $('license-form').reset(); $('service-area-form').reset();
-          recoveryMode = false;
+        $('license-form').reset(); $('service-area-form').reset();
+        recoveryMode = false;
         showPanel('login-panel');
       }
       if (event === 'PASSWORD_RECOVERY') {
         recoveryMode = true;
-        showPanel('password-recovery-panel');
+        showPasswordPanel('recovery');
       }
       if (event === 'SIGNED_IN' && !user) setTimeout(() => { if (!recoveryMode) openEditor(session); }, 0);
     });
     const { data, error } = await client.auth.getSession();
     if (error) throw error;
-    if (recoveryMode) showPanel('password-recovery-panel');
+    if (recoveryMode) showPasswordPanel('recovery');
     else if (data.session) await openEditor(data.session);
     else showPanel('login-panel');
   } catch {
@@ -70,24 +80,56 @@ async function start() {
 }
 
 async function openEditor(session) {
-  if (!session || user) return;
-  user = session.user;
+  if (!session || user || openingSessionId === session.user.id) return;
+  openingSessionId = session.user.id;
   const generation = ++authGeneration;
   try {
+    const { data: hasAccess, error: accessError } = await client.rpc('has_site_access');
+    if (accessError || hasAccess !== true) throw new Error('This account does not have edit access.');
+    const { data: needsPasswordChange, error: passwordError } = await client.rpc('needs_password_change');
+    if (passwordError) throw new Error('Your account setup could not be checked. Please try again.');
+    if (needsPasswordChange === true) {
+      showPasswordPanel('initial');
+      return;
+    }
     const { data: allowed, error: ownerError } = await client.rpc('can_edit_site');
     if (ownerError || allowed !== true) throw new Error('This account does not have edit access.');
+    const { data: ownerStatus, error: roleError } = await client.rpc('is_site_owner');
+    if (roleError || typeof ownerStatus !== 'boolean') throw new Error('Your account access could not be checked. Please try again.');
+    let temporaryEditorActive = false;
+    if (ownerStatus) {
+      const { data, error } = await client.rpc('temporary_editor_active');
+      if (error || typeof data !== 'boolean') throw new Error('Temporary access could not be checked. Please try again.');
+      temporaryEditorActive = data;
+    }
     const { data, error } = await client.from('site_content').select('content,version').eq('id', 1).single();
     if (error || !data) throw new Error('Your owner tools need to be connected. Please contact the person who set up your website.');
     if (generation !== authGeneration) return;
+    user = session.user;
+    isOwner = ownerStatus;
     content = { ...clone(data.content), serviceArea: data.content.serviceArea ?? initialServiceArea() };
     savedContent = clone(content); version = data.version;
+    $('account-role').textContent = isOwner ? 'Permanent owner' : 'Temporary editor';
+    $('account-description').textContent = isOwner
+      ? 'You can manage the website and remove temporary editing access.'
+      : 'You have full editing access to photos and business details.';
+    $('owner-access-controls').hidden = !isOwner;
+    if (isOwner) {
+      $('temporary-editor-status').textContent = temporaryEditorActive
+        ? 'A temporary editor can currently update the website.'
+        : 'No temporary editor currently has website access.';
+      $('remove-temporary-editor').hidden = !temporaryEditorActive;
+    }
     render(); renderServiceArea(); renderLicense(); markDirty();
     showPanel('editor');
   } catch (error) {
     await client.auth.signOut({ scope: 'local' });
     user = null;
+    isOwner = false;
     showPanel('login-panel');
     message('login-status', error.message, true);
+  } finally {
+    if (openingSessionId === session.user.id) openingSessionId = null;
   }
 }
 
@@ -129,6 +171,7 @@ $('request-password-reset').addEventListener('click', async () => {
 
 $('password-recovery-form').addEventListener('submit', async event => {
   event.preventDefault();
+  const flow = passwordFlow || 'recovery';
   const password = $('new-password').value;
   if (password !== $('confirm-password').value) {
     message('password-recovery-status', 'Those passwords do not match.', true);
@@ -146,17 +189,65 @@ $('password-recovery-form').addEventListener('submit', async event => {
     const { error } = await client.auth.updateUser({ password });
     if (error) throw error;
     $('password-recovery-form').reset();
+    if (flow !== 'manual') {
+      const { data: completed, error: setupError } = await client.rpc('complete_password_setup');
+      if (setupError) throw setupError;
+      if (flow === 'initial' && completed !== true) throw new Error('This account could not finish its setup.');
+    }
+    if (flow === 'manual') {
+      passwordFlow = null;
+      showPanel('editor');
+      message('editor-status', 'Your password has been updated.');
+      return;
+    }
     recoveryMode = false;
     history.replaceState(null, '', location.pathname);
     const { data, error: sessionError } = await client.auth.getSession();
     if (sessionError || !data.session) throw new Error('Please sign in with your new password.');
+    user = null;
+    passwordFlow = null;
     await openEditor(data.session);
-    message('editor-status', 'Your password has been updated.');
+    if (user) message('editor-status', flow === 'initial' ? 'Your new password is ready.' : 'Your password has been updated.');
   } catch (error) {
-    message('password-recovery-status', error.message === 'Please sign in with your new password.'
+    const text = error.message === 'Please sign in with your new password.'
       ? error.message
-      : 'We could not update your password. Please open a fresh reset link and try again.', true);
+      : error.message === 'This account could not finish its setup.'
+        ? error.message
+        : 'We could not update your password. Please check the new password and try again.';
+    message('password-recovery-status', text, true);
   } finally { button.disabled = false; }
+});
+$('change-password').addEventListener('click', () => {
+  if (!user || busy) return;
+  showPasswordPanel('manual');
+  $('new-password').focus();
+});
+$('cancel-password-change').addEventListener('click', () => {
+  if (passwordFlow !== 'manual' || !user) return;
+  $('password-recovery-form').reset();
+  message('password-recovery-status', '');
+  passwordFlow = null;
+  showPanel('editor');
+});
+$('remove-temporary-editor').addEventListener('click', async () => {
+  if (!isOwner || busy) return;
+  if (!confirm('Remove the temporary editor’s website access? They will no longer be able to save changes or upload photos. Your access and published website stay unchanged.')) return;
+  const button = $('remove-temporary-editor');
+  button.disabled = true;
+  message('account-status', 'Removing temporary website access…');
+  try {
+    const { data: removed, error } = await client.rpc('remove_temporary_editor');
+    if (error) throw error;
+    button.hidden = true;
+    $('temporary-editor-status').textContent = removed
+      ? 'The temporary editor can no longer update the website. Your access and published content are unchanged.'
+      : 'No temporary editor currently has website access.';
+    message('account-status', '');
+  } catch {
+    message('account-status', 'We could not remove access right now. Please try again.', true);
+  } finally {
+    button.disabled = false;
+  }
 });
 $('logout').addEventListener('click', async () => {
   if (dirty && !confirm('Leave without saving your changes?')) return;

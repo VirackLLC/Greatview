@@ -3,11 +3,13 @@
 ## Passed in this workspace
 
 - `npm test`: 13 content/API tests, including preservation of original photos, service-area validation, gallery reorder/delete, ROC validation and safe links, secret-key protection, and quote email behavior with an injected mail transport.
-- `npm run test:policies`: the setup SQL and seed ran against isolated PostgreSQL, including migration from the prior single-owner schema. Public reads work; anonymous and unapproved users cannot publish or upload. The owner and temporary editor are individually authorized, the editor can only upload to their own folder, and removing the editor leaves owner access and published content intact. Invalid content, direct table writes, stale saves, unsafe upload paths and extra account roles are rejected.
-- `npm run test:browser`: 23 checks at desktop (1440×1000) and mobile (390×844), using intercepted requests to a synthetic Supabase host:
+- `npm run test:policies`: the setup SQL and seed ran against isolated PostgreSQL, including migration from the prior single-owner schema. Both roles must complete first-password setup before editing. The owner can remove temporary access; the editor cannot inspect or remove owner access. Anonymous and unapproved users cannot publish or upload, and removing the editor preserves owner access and published content. Invalid content, direct table writes, stale saves, unsafe upload paths and extra account roles are rejected.
+- `npm run test:browser`: 31 checks at desktop (1440×1000) and mobile (390×844), using intercepted requests to a synthetic Supabase host:
   - Unconfigured admin fails closed.
   - Existing public homepage, five services, ten gallery images and quote modal work.
-  - Email/password login, password-reset request, and the protected new-password screen work against a synthetic Supabase host for both roles; unapproved sessions cannot open the editor.
+  - Email/password login, password-reset request, first-sign-in password change, and recovery work for both roles; editing stays locked until the initial password is changed.
+  - Either role can change its password from account settings or cancel the flow without losing the session.
+  - The owner can remove temporary website access; the editor does not see the removal control.
   - Actual imported photo references appear in the owner editor.
   - Replacement and multiple uploads optimize to WebP, reducing a 3200-pixel source to 2400 pixels.
   - Deletion confirmation, unsaved draft isolation, discard, arrow reorder and desktop drag work.

@@ -311,6 +311,44 @@ input:focus {
   background: rgba(255, 253, 250, .84);
   box-shadow: 0 8px 28px rgba(61, 46, 32, .035);
 }
+.account-access-heading, .account-access-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+.account-access-heading { margin-bottom: 14px; }
+.account-access-heading .eyebrow { margin-bottom: 7px; }
+.account-access-heading h2 {
+  margin: 0;
+  font: 500 22px/1.3 var(--serif);
+  letter-spacing: -.015em;
+}
+.account-role {
+  padding: 7px 10px;
+  border: 1px solid rgba(184, 111, 78, .24);
+  border-radius: 999px;
+  color: var(--copper);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.account-access-row p, .owner-access-controls p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.owner-access-controls:not([hidden]) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid rgba(215, 204, 190, .7);
+}
+.account-access .status-message:empty { display: none; }
 .section-heading {
   display: grid;
   grid-template-columns: 29px 1fr;
@@ -546,6 +584,8 @@ input:focus {
   .editor-heading { align-items: flex-start; padding-bottom: 23px; }
   .editor-heading > .button { min-height: 42px; padding: 0 12px; font-size: 11px; }
   .content-section { margin-bottom: 14px; padding: 21px 16px 22px; }
+  .account-access-row, .owner-access-controls:not([hidden]) { align-items: flex-start; flex-direction: column; }
+  .account-access-row .button, .owner-access-controls .button { width: 100%; }
   .section-heading { gap: 8px; }
   .section-heading h2 { font-size: 20px; }
   .section-heading p { max-width: 38ch; font-size: 11px; }

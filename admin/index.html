@@ -49,13 +49,14 @@
       <section id="password-recovery-panel" class="panel auth-panel" hidden aria-labelledby="password-recovery-title">
         <div class="eyebrow"><span class="eyebrow-rule"></span> Secure account access</div>
         <h1 id="password-recovery-title">Choose a new<br><em>password.</em></h1>
-        <p class="intro-copy">Use a strong password you do not use on another website.</p>
+        <p id="password-recovery-intro" class="intro-copy">Use a strong password you do not use on another website.</p>
         <form id="password-recovery-form" class="form-stack">
           <label for="new-password">New password</label>
           <input id="new-password" name="newPassword" type="password" autocomplete="new-password" minlength="12" required>
           <label for="confirm-password">Confirm new password</label>
           <input id="confirm-password" name="confirmPassword" type="password" autocomplete="new-password" minlength="12" required>
           <button id="save-password" class="button button-primary" type="submit">Save new password <span aria-hidden="true">→</span></button>
+          <button id="cancel-password-change" class="button button-quiet" type="button" hidden>Back to photos</button>
         </form>
         <p id="password-recovery-status" class="status-message" role="status" aria-live="polite"></p>
       </section>
@@ -83,6 +84,25 @@
       </div>
 
       <p id="editor-status" class="status-message" role="status" aria-live="polite"></p>
+
+      <section class="content-section account-access" aria-labelledby="account-access-title">
+        <div class="account-access-heading">
+          <div>
+            <div class="eyebrow"><span class="eyebrow-rule"></span> Account</div>
+            <h2 id="account-access-title">Your access</h2>
+          </div>
+          <span id="account-role" class="account-role"></span>
+        </div>
+        <div class="account-access-row">
+          <p id="account-description"></p>
+          <button id="change-password" class="button button-secondary" type="button">Change password</button>
+        </div>
+        <div id="owner-access-controls" class="owner-access-controls" hidden>
+          <p id="temporary-editor-status" role="status" aria-live="polite"></p>
+          <button id="remove-temporary-editor" class="button button-quiet" type="button">Remove temporary access</button>
+        </div>
+        <p id="account-status" class="status-message" role="status" aria-live="polite"></p>
+      </section>
 
       <section class="content-section" aria-labelledby="main-photos-title">
         <div class="section-heading">

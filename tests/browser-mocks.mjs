@@ -6,7 +6,12 @@ const data = JSON.parse(await readFile(new URL('../data.json', import.meta.url),
 export async function installOwnerMock(page, options = {}) {
   const role = options.role || 'owner';
   const userId = role === 'editor' ? '22222222-2222-4222-a222-222222222222' : '11111111-1111-4111-a111-111111111111';
-  const state = { content: initialContent(data), version: 1, canEdit: options.canEdit !== false, role, uploads: [], saves: 0, resetRequests: 0, passwordUpdates: 0, calls: [] };
+  const state = {
+    content: initialContent(data), version: 1, canEdit: options.canEdit !== false,
+    hasAccess: options.hasAccess !== false, passwordChangeRequired: options.passwordChangeRequired !== false,
+    temporaryEditorActive: options.temporaryEditorActive !== false, role,
+    uploads: [], saves: 0, resetRequests: 0, passwordUpdates: 0, passwordSetupCompletions: 0, calls: []
+  };
   const files = new Map();
   const user = { id: userId, aud: 'authenticated', role: 'authenticated', email: `${role}@example.invalid`, email_confirmed_at: new Date().toISOString(), app_metadata: { provider: 'email', providers: ['email'] }, user_metadata: {}, created_at: new Date().toISOString() };
   const encode = value => Buffer.from(JSON.stringify(value)).toString('base64url');
@@ -30,11 +35,30 @@ export async function installOwnerMock(page, options = {}) {
     }
     if (url.pathname === '/auth/v1/recover') { state.resetRequests++; return route.fulfill({ json: {} }); }
     if (url.pathname === '/auth/v1/logout') return route.fulfill({ status: 204 });
-    if (url.pathname === '/rest/v1/rpc/can_edit_site') return route.fulfill({ json: state.canEdit });
+    if (url.pathname === '/rest/v1/rpc/has_site_access') return route.fulfill({ json: state.hasAccess });
+    if (url.pathname === '/rest/v1/rpc/needs_password_change') return route.fulfill({ json: state.passwordChangeRequired });
+    if (url.pathname === '/rest/v1/rpc/can_edit_site') return route.fulfill({ json: state.canEdit && state.hasAccess && !state.passwordChangeRequired });
+    if (url.pathname === '/rest/v1/rpc/is_site_owner') return route.fulfill({ json: state.role === 'owner' });
+    if (url.pathname === '/rest/v1/rpc/temporary_editor_active') {
+      return state.role === 'owner'
+        ? route.fulfill({ json: state.temporaryEditorActive })
+        : route.fulfill({ status: 403, json: { code: '42501', message: 'Only the permanent owner can manage temporary access' } });
+    }
+    if (url.pathname === '/rest/v1/rpc/complete_password_setup') {
+      if (!state.hasAccess) return route.fulfill({ status: 403, json: { code: '42501', message: 'Not an approved editor' } });
+      state.passwordChangeRequired = false; state.passwordSetupCompletions++;
+      return route.fulfill({ json: true });
+    }
+    if (url.pathname === '/rest/v1/rpc/remove_temporary_editor') {
+      if (state.role !== 'owner') return route.fulfill({ status: 403, json: { code: '42501', message: 'Only the permanent owner can remove temporary access' } });
+      const removed = state.temporaryEditorActive;
+      state.temporaryEditorActive = false;
+      return route.fulfill({ json: removed });
+    }
     if (url.pathname === '/rest/v1/site_content') return route.fulfill({ json: { content: state.content, version: state.version } });
     if (url.pathname === '/rest/v1/rpc/publish_site') {
       const body = request.postDataJSON();
-      if (!state.canEdit) return route.fulfill({ status: 403, json: { code: '42501', message: 'Not an approved editor' } });
+      if (!state.canEdit || !state.hasAccess || state.passwordChangeRequired) return route.fulfill({ status: 403, json: { code: '42501', message: 'Not an approved editor' } });
       if (body.expected_version !== state.version) return route.fulfill({ status: 409, json: { code: '40001', message: 'Conflict' } });
       state.content = structuredClone(body.new_content); state.version++; state.saves++;
       return route.fulfill({ json: state.version });
