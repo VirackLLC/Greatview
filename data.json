@@ -1,4 +1,8 @@
 {
+  "serviceArea": {
+    "region": "Greater Phoenix Area",
+    "cities": ["Scottsdale", "Mesa", "Chandler", "Gilbert"]
+  },
   "services": [
     {
       "title": "Pavers",
