@@ -45,7 +45,6 @@ export async function loadSiteContent(original) {
   if (license?.number && !validateLicense(license)) {
     document.getElementById('license-business-name').textContent = license.businessName;
     document.getElementById('license-number').textContent = `ROC ${license.number}`;
-    document.getElementById('license-verification').href = license.verificationUrl || 'https://roc.az.gov';
     document.getElementById('business-license').hidden = false;
   }
   return {
