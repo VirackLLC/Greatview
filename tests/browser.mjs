@@ -200,7 +200,7 @@ try {
       await expect(page.locator('#license-business-name')).toHaveText('Staging test only');
       await expect(page.locator('[data-service-area-region]').first()).toHaveText('East Valley');
       await expect(page.locator('[data-service-area-cities]')).toHaveText('Mesa, Tempe, Gilbert');
-      await expect(page.locator('#license-verification')).toHaveAttribute('href', 'https://azroc.my.site.com/AZRoc/s/contractor-search');
+      await expect(page.locator('#business-license a')).toHaveCount(0);
       expect(await page.locator('body').innerText()).not.toContain('ROC Verified');
       // The imported site has offscreen translated reveal animations; check the new block itself.
       expect(await page.evaluate(() => {
