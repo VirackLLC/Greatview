@@ -83,4 +83,3 @@ input:focus {
 .license-label { font-size: .75rem; text-transform: uppercase; letter-spacing: .15em; margin-bottom: .5rem; }
 .license-business-name { font-size: 1.25rem; font-weight: 700; overflow-wrap: anywhere; }
 .license-number { font-size: 1.5rem; font-weight: 700; margin-top: .25rem; }
-.business-license a { color: #8c4d30; text-decoration: underline; text-underline-offset: .25rem; font-size: .95rem; padding: .75rem 0; }
