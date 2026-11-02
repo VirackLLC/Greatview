@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="referrer" content="same-origin">
+  <meta name="theme-color" content="#f7f3ed">
+  <title>Greatview Hardscape | Owner</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="/admin/admin.css">
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+
+  <header class="topbar">
+    <a class="brand" href="/admin" aria-label="Greatview Hardscape owner page">
+      <span class="brand-mark" aria-hidden="true">G</span>
+      <span class="brand-name">Greatview <span>Hardscape</span></span>
+    </a>
+    <a class="website-link" href="/" target="_blank" rel="noopener">
+      <span>View website</span><span aria-hidden="true">↗</span>
+    </a>
+  </header>
+
+  <main id="main-content" class="page-shell">
+    <p id="loading-status" class="loading-status" role="status">Getting your photo studio ready…</p>
+
+    <section id="login-panel" class="panel auth-panel" hidden aria-labelledby="login-title">
+      <div class="eyebrow"><span class="eyebrow-rule"></span> Your private photo studio</div>
+      <h1 id="login-title">A little upkeep.<br><em>A lot of Greatview.</em></h1>
+      <p class="intro-copy">Sign in to keep your project photos and business details looking their best.</p>
+
+      <form id="login-form" class="form-stack">
+        <label for="email">Email address</label>
+        <input id="email" name="email" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com" required>
+          <label for="password">Password</label>
+          <input id="password" name="password" type="password" autocomplete="current-password" required>
+          <button id="sign-in" class="button button-primary" type="submit">Log in <span aria-hidden="true">→</span></button>
+      </form>
+
+        <button id="request-password-reset" class="text-button" type="button">Forgot your password?</button>
+
+      <p id="login-status" class="status-message" role="status" aria-live="polite"></p>
+      <p class="privacy-note"><span aria-hidden="true">✳</span> Only your invited email can access this page.</p>
+    </section>
+
+      <section id="password-recovery-panel" class="panel auth-panel" hidden aria-labelledby="password-recovery-title">
+        <div class="eyebrow"><span class="eyebrow-rule"></span> Secure account access</div>
+        <h1 id="password-recovery-title">Choose a new<br><em>password.</em></h1>
+        <p id="password-recovery-intro" class="intro-copy">Use a strong password you do not use on another website.</p>
+        <form id="password-recovery-form" class="form-stack">
+          <label for="new-password">New password</label>
+          <input id="new-password" name="newPassword" type="password" autocomplete="new-password" minlength="12" required>
+          <label for="confirm-password">Confirm new password</label>
+          <input id="confirm-password" name="confirmPassword" type="password" autocomplete="new-password" minlength="12" required>
+          <button id="save-password" class="button button-primary" type="submit">Save new password <span aria-hidden="true">→</span></button>
+          <button id="cancel-password-change" class="button button-quiet" type="button" hidden>Back to photos</button>
+        </form>
+        <p id="password-recovery-status" class="status-message" role="status" aria-live="polite"></p>
+      </section>
+
+    <section id="setup-panel" class="panel setup-panel" hidden aria-labelledby="setup-title">
+      <div class="lock-mark" aria-hidden="true">⌑</div>
+      <div class="eyebrow"><span class="eyebrow-rule"></span> Almost ready</div>
+      <h1 id="setup-title">Your studio is<br><em>being prepared.</em></h1>
+      <p class="intro-copy">This private page is not set up yet. Your photos and business details are safely unavailable until the owner setup is complete.</p>
+      <div class="setup-note">
+        <strong>Nothing needs fixing on your end.</strong>
+        <span>Please contact your website administrator to finish setup.</span>
+      </div>
+      <a class="button button-secondary" href="/">Back to Greatview Hardscape</a>
+    </section>
+
+    <section id="editor" class="editor" hidden aria-labelledby="editor-title">
+      <div class="editor-heading">
+        <div>
+          <div class="eyebrow"><span class="eyebrow-rule"></span> Your private photo studio</div>
+          <h1 id="editor-title">Make it look like <em>Greatview.</em></h1>
+          <p class="intro-copy">A few thoughtful updates keep your work looking its best.</p>
+        </div>
+        <button id="logout" class="button button-quiet" type="button">Log out</button>
+      </div>
+
+      <p id="editor-status" class="status-message" role="status" aria-live="polite"></p>
+
+      <section class="content-section account-access" aria-labelledby="account-access-title">
+        <div class="account-access-heading">
+          <div>
+            <div class="eyebrow"><span class="eyebrow-rule"></span> Account</div>
+            <h2 id="account-access-title">Your access</h2>
+          </div>
+          <span id="account-role" class="account-role"></span>
+        </div>
+        <div class="account-access-row">
+          <p id="account-description"></p>
+          <button id="change-password" class="button button-secondary" type="button">Change password</button>
+        </div>
+        <div id="owner-access-controls" class="owner-access-controls" hidden>
+          <p id="temporary-editor-status" role="status" aria-live="polite"></p>
+          <button id="remove-temporary-editor" class="button button-quiet" type="button">Remove temporary access</button>
+        </div>
+        <p id="account-status" class="status-message" role="status" aria-live="polite"></p>
+      </section>
+
+      <section class="content-section" aria-labelledby="main-photos-title">
+        <div class="section-heading">
+          <span class="section-number">01</span>
+          <div>
+            <h2 id="main-photos-title">Homepage / Main Photos</h2>
+            <p>These are the first photos people see on your website.</p>
+          </div>
+        </div>
+        <div id="main-photos" class="photo-grid"></div>
+      </section>
+
+      <section class="content-section" aria-labelledby="gallery-title">
+        <div class="section-heading section-heading-with-action">
+          <span class="section-number">02</span>
+          <div>
+            <h2 id="gallery-title">Project Gallery</h2>
+            <p>Add projects, change their order, or choose a cover photo.</p>
+          </div>
+          <button id="add-gallery" class="button button-secondary add-button" type="button"><span aria-hidden="true">＋</span> Add project photo</button>
+        </div>
+        <div id="gallery-photos" class="photo-grid"></div>
+      </section>
+
+      <section class="content-section" aria-labelledby="featured-title">
+        <div class="section-heading">
+          <span class="section-number">03</span>
+          <div>
+            <h2 id="featured-title">Featured Project</h2>
+            <p>Spotlight one project on the homepage.</p>
+          </div>
+        </div>
+        <div id="featured-photos" class="photo-grid"></div>
+      </section>
+
+      <section class="content-section" aria-labelledby="service-area-title">
+        <div class="section-heading">
+          <span class="section-number">04</span>
+          <div>
+            <h2 id="service-area-title">Service Area</h2>
+            <p>Update the area and cities where you take on projects.</p>
+          </div>
+        </div>
+        <form id="service-area-form" class="service-area-form">
+          <div class="field-group">
+            <label for="area-region">Service area</label>
+            <input id="area-region" name="region" type="text" maxlength="100" autocomplete="off" required>
+          </div>
+          <div class="field-group">
+            <label for="area-cities">Cities served</label>
+            <textarea id="area-cities" name="cities" rows="5" maxlength="2500" aria-describedby="area-cities-hint"></textarea>
+            <span id="area-cities-hint" class="field-hint">Add one city per line. You can leave this blank if you prefer not to list cities.</span>
+          </div>
+        </form>
+      </section>
+
+      <section class="content-section license-section" aria-labelledby="license-title">
+        <div class="section-heading">
+          <span class="section-number">05</span>
+          <div>
+            <h2 id="license-title">Business License</h2>
+            <p>Optional details to help customers verify your business.</p>
+          </div>
+        </div>
+        <form id="license-form" class="license-form">
+          <div class="field-group">
+            <label for="business-name">Registered business name</label>
+            <input id="business-name" name="businessName" type="text" maxlength="160" autocomplete="organization" placeholder="As shown on your registration">
+          </div>
+          <div class="field-group">
+            <label for="roc-number">Arizona ROC license number</label>
+            <input id="roc-number" name="rocNumber" type="text" inputmode="numeric" maxlength="6" placeholder="Six digits, including any leading zero">
+          </div>
+          <div class="field-group">
+            <label for="verification-url">Official verification link <span class="optional-label">Optional</span></label>
+            <input id="verification-url" name="verificationUrl" type="url" inputmode="url" maxlength="500" placeholder="https://">
+            <span class="field-hint">A link to your official license listing, if you have one.</span>
+          </div>
+        </form>
+      </section>
+      <p id="save-summary" class="save-summary" aria-live="polite"></p>
+
+      <div class="save-bar" id="save-bar">
+        <div class="save-bar-inner">
+          <span class="save-caption">Your website updates only after you save.</span>
+          <div class="save-actions">
+            <button id="discard" class="button button-quiet" type="button">Undo changes</button>
+            <button id="save" class="button button-primary" type="button">Save changes <span aria-hidden="true">→</span></button>
+          </div>
+        </div>
+        <p id="save-status" class="save-status" role="status" aria-live="polite"></p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="page-footer">
+    <span>Greatview Hardscape</span>
+    <span>Design <b>•</b> Build <b>•</b> Hardscape</span>
+  </footer>
+
+  <dialog id="photo-dialog" class="photo-dialog" aria-labelledby="photo-dialog-title">
+    <div class="dialog-head">
+      <div>
+        <div class="eyebrow"><span class="eyebrow-rule"></span> Photo details</div>
+        <h2 id="photo-dialog-title">Update photo</h2>
+      </div>
+      <button id="close-photo-dialog" class="icon-button" type="button" aria-label="Close photo details">×</button>
+    </div>
+    <div class="dialog-content">
+      <div class="selected-photo-frame">
+        <img id="selected-photo" src="" alt="">
+      </div>
+      <div class="dialog-photo-actions">
+        <button id="replace-photo" class="button button-secondary button-full" type="button"><span aria-hidden="true">↻</span> Replace photo</button>
+        <button id="use-cover" class="button button-secondary button-full" type="button" hidden>Use as homepage cover</button>
+        <button id="use-featured" class="button button-secondary button-full" type="button" hidden>Feature this project</button>
+        <button id="delete-photo" class="button button-danger button-full" type="button">Delete photo</button>
+      </div>
+    </div>
+    <p class="dialog-footnote">Photo changes will be saved when you choose Save changes.</p>
+  </dialog>
+
+  <input id="photo-upload" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" hidden multiple>
+  <script type="module" src="/admin/admin.bundle.js"></script>
+</body>
+</html>

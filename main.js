@@ -2,6 +2,7 @@
  * Main Logic for Greatview Hardscape
  * Lead generation focus with 5 Core Services and Portfolio Management
  */
+import { loadSiteContent } from './site-content.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
     lucide.createIcons();
@@ -29,8 +30,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 
     try {
-        const response = await fetch('data.json');
-        const data = await response.json();
+        const response = await fetch('data.json', { cache: 'no-store' });
+        if (!response.ok) throw new Error('Website data could not be loaded');
+        const data = await loadSiteContent(await response.json());
         renderServices(data.services);
         renderGallery(data.gallery);
     } catch (error) {
@@ -111,9 +113,6 @@ function renderServices(services) {
         const card = document.createElement('div');
         card.className = 'bg-white rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 border border-stone-200 group';
         card.innerHTML = `
-            <div class="h-64 overflow-hidden">
-                <img src="${s.image}" alt="${s.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700">
-            </div>
             <div class="p-8">
                 <div class="flex justify-between items-start mb-4">
                     <h4 class="text-2xl font-serif text-charcoal">${s.title}</h4>
@@ -123,6 +122,14 @@ function renderServices(services) {
                 <button onclick="openModal()" class="text-xs font-bold uppercase tracking-widest text-copper border-b-2 border-copper/20 hover:border-copper transition-all pb-1">Inquire Now</button>
             </div>
         `;
+        if (s.image) {
+            const frame = document.createElement('div');
+            frame.className = 'h-64 overflow-hidden';
+            const image = new Image();
+            image.src = s.image; image.alt = s.title; image.loading = 'lazy';
+            image.className = 'w-full h-full object-cover group-hover:scale-105 transition-transform duration-700';
+            frame.append(image); card.prepend(frame);
+        }
         grid.appendChild(card);
     });
     lucide.createIcons();
@@ -137,11 +144,14 @@ function renderGallery(items) {
         const div = document.createElement('div');
         div.className = 'gallery-item overflow-hidden rounded-lg cursor-pointer bg-stone-800 aspect-square group relative';
         div.innerHTML = `
-            <img src="${item.url}" alt="${item.title}" class="w-full h-full object-cover transition-all duration-500 group-hover:scale-110 group-hover:opacity-60">
             <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                 <i data-lucide="maximize" class="text-white w-6 h-6"></i>
             </div>
         `;
+        const image = new Image();
+        image.src = item.url; image.alt = item.title; image.loading = 'lazy';
+        image.className = 'w-full h-full object-cover transition-all duration-500 group-hover:scale-110 group-hover:opacity-60';
+        div.prepend(image);
         div.onclick = () => openLightbox(item.url);
         grid.appendChild(div);
     });
