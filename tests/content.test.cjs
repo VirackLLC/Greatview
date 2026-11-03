@@ -8,10 +8,34 @@ test('migration preserves every existing photo, defaults the service area, and l
   const content = initialContent(data);
   assert.equal(content.hero, ORIGINAL_HERO);
   assert.equal(content.featured, ORIGINAL_FEATURED);
-  assert.deepEqual(content.services, data.services.map(service => service.image));
+  assert.deepEqual(content.services.map(service => service.image), data.services.map(service => service.image));
+  assert.deepEqual(content.services.map(service => service.title), data.services.map(service => service.title));
+  assert.deepEqual(content.services.map(service => service.description), data.services.map(service => service.description));
   assert.deepEqual(content.gallery.map(photo => photo.url), data.gallery.map(photo => photo.url));
   assert.deepEqual(content.serviceArea, data.serviceArea);
   assert.deepEqual(content.license, { businessName: '', number: '', verificationUrl: '' });
+});
+test('legacy photo-only service data upgrades without losing existing names or images', async () => {
+  const { normalizeServices } = await load();
+  const migrated = normalizeServices(data.services.map(service => service.image), data.services);
+  assert.deepEqual(migrated.map(service => service.title), data.services.map(service => service.title));
+  assert.deepEqual(migrated.map(service => service.image), data.services.map(service => service.image));
+  assert.ok(migrated.every(service => service.id && service.description && service.icon));
+});
+test('service validation allows growth but rejects unsafe or incomplete records', async () => {
+  const { initialContent, validateServices, moveService, MAX_SERVICES } = await load();
+  const services = initialContent(data).services;
+  assert.equal(validateServices(services), '');
+  services.push({ id: 'service-new', title: 'Outdoor Kitchens', description: 'Built for Arizona evenings.', icon: 'grid', image: null });
+  assert.equal(validateServices(services), '');
+  assert.equal(moveService(services, 'service-new', -1), true);
+  assert.equal(services.at(-2).id, 'service-new');
+  assert.ok(validateServices([{ ...services[0], title: ' ' }]));
+  assert.ok(validateServices([{ ...services[0], description: '  ' }]));
+  assert.ok(validateServices([{ ...services[0], id: 'bad id' }]));
+  assert.ok(validateServices(Array.from({ length: MAX_SERVICES + 1 }, (_, i) => ({
+    id: `service-${i}`, title: `Service ${i}`, description: '', icon: 'grid', image: null
+  }))));
 });
 test('service-area validation rejects blank, oversized, and duplicate entries', async () => {
   const { validateServiceArea } = await load();
@@ -31,15 +55,15 @@ test('gallery moves preserve identity, order, and boundaries', async () => {
   assert.equal(movePhoto(gallery, 'unknown', 1), false);
   assert.equal(movePhoto(gallery, 'original-10', 1), false);
 });
-test('deletions remove gallery items and clear image slots, not empty URLs', async () => {
+test('photo deletion clears service images without removing the service itself', async () => {
   const { initialContent, removePhoto } = await load();
   const content = initialContent(data);
   removePhoto(content, 'gallery', 'original-1');
-  removePhoto(content, 'services', 0);
+  removePhoto(content, 'services', content.services[0].id);
   removePhoto(content, 'hero');
   removePhoto(content, 'featured');
   assert.equal(content.gallery.length, 9);
-  assert.equal(content.services[0], null);
+  assert.equal(content.services[0].image, null);
   assert.equal(content.services.length, 5);
   assert.equal(content.hero, null);
   assert.equal(content.featured, null);

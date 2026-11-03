@@ -141,15 +141,24 @@ $$;
 create or replace function app_private.valid_content(doc jsonb)
 returns boolean language plpgsql immutable set search_path = ''
 as $$
-declare item jsonb; license jsonb; gallery_id text;
+declare item jsonb; license jsonb; gallery_id text; service_id text;
 begin
   if doc is null or jsonb_typeof(doc) <> 'object' or octet_length(doc::text) > 100000 then return false; end if;
   if not (doc ?& array['hero','featured','services','gallery','license','serviceArea']) then return false; end if;
   if not app_private.valid_photo_url(doc->'hero') or not app_private.valid_photo_url(doc->'featured') then return false; end if;
-  if jsonb_typeof(doc->'services') <> 'array' or jsonb_array_length(doc->'services') <> 5 then return false; end if;
+  if jsonb_typeof(doc->'services') <> 'array' or jsonb_array_length(doc->'services') > 20 then return false; end if;
   for item in select jsonb_array_elements(doc->'services') loop
-    if not app_private.valid_photo_url(item) then return false; end if;
+    if jsonb_typeof(item) <> 'object' or not (item ?& array['id','title','description','icon','image']) then return false; end if;
+    service_id := item->>'id';
+    if jsonb_typeof(item->'id') <> 'string' or service_id !~ '^[a-zA-Z0-9-]{1,80}$' then return false; end if;
+    if jsonb_typeof(item->'title') <> 'string' or length(btrim(item->>'title')) < 1
+      or length(item->>'title') > 80 then return false; end if;
+    if jsonb_typeof(item->'description') <> 'string' or length(btrim(item->>'description')) < 1
+      or length(item->>'description') > 600 then return false; end if;
+    if jsonb_typeof(item->'icon') <> 'string' or item->>'icon' not in ('grid','sprout','mountain','droplets','pen-tool') then return false; end if;
+    if not app_private.valid_photo_url(item->'image') then return false; end if;
   end loop;
+  if (select count(*) <> count(distinct value->>'id') from jsonb_array_elements(doc->'services')) then return false; end if;
   if jsonb_typeof(doc->'gallery') <> 'array' or jsonb_array_length(doc->'gallery') > 80 then return false; end if;
   for item in select jsonb_array_elements(doc->'gallery') loop
     if jsonb_typeof(item) <> 'object' or not (item ?& array['id','url','title']) then return false; end if;

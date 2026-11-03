@@ -12,6 +12,7 @@ export async function installOwnerMock(page, options = {}) {
     temporaryEditorActive: options.temporaryEditorActive !== false, role,
     uploads: [], saves: 0, resetRequests: 0, passwordUpdates: 0, passwordSetupCompletions: 0, calls: []
   };
+  if (options.legacyServices) state.content.services = state.content.services.map(service => service.image);
   const files = new Map();
   const user = { id: userId, aud: 'authenticated', role: 'authenticated', email: `${role}@example.invalid`, email_confirmed_at: new Date().toISOString(), app_metadata: { provider: 'email', providers: ['email'] }, user_metadata: {}, created_at: new Date().toISOString() };
   const encode = value => Buffer.from(JSON.stringify(value)).toString('base64url');

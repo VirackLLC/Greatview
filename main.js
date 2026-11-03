@@ -3,6 +3,7 @@
  * Lead generation focus with 5 Core Services and Portfolio Management
  */
 import { loadSiteContent } from './site-content.js';
+import { SERVICE_ICONS } from './shared/content.mjs';
 
 document.addEventListener('DOMContentLoaded', async () => {
     lucide.createIcons();
@@ -34,10 +35,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!response.ok) throw new Error('Website data could not be loaded');
         const data = await loadSiteContent(await response.json());
         renderServices(data.services);
+        renderServiceOptions(data.services);
         renderGallery(data.gallery);
     } catch (error) {
 
-        renderServices(getFallbackServices());
+        const services = getFallbackServices();
+        renderServices(services);
+        renderServiceOptions(services);
         renderGallery(getFallbackGallery());
     }
 
@@ -108,20 +112,33 @@ function renderServices(services) {
     const grid = document.getElementById('services-grid');
     if (!grid) return;
     grid.innerHTML = '';
-    
+    const section = document.getElementById('services');
+    if (section) section.hidden = services.length === 0;
+    document.querySelectorAll('a[href="#services"]').forEach(link => { link.hidden = services.length === 0; });
+
     services.forEach(s => {
         const card = document.createElement('div');
         card.className = 'bg-white rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 border border-stone-200 group';
-        card.innerHTML = `
-            <div class="p-8">
-                <div class="flex justify-between items-start mb-4">
-                    <h4 class="text-2xl font-serif text-charcoal">${s.title}</h4>
-                    <i data-lucide="${s.icon}" class="w-6 h-6 text-copper"></i>
-                </div>
-                <p class="text-stone-500 text-sm leading-relaxed mb-6">${s.description}</p>
-                <button onclick="openModal()" class="text-xs font-bold uppercase tracking-widest text-copper border-b-2 border-copper/20 hover:border-copper transition-all pb-1">Inquire Now</button>
-            </div>
-        `;
+        const details = document.createElement('div');
+        details.className = 'p-8';
+        const heading = document.createElement('div');
+        heading.className = 'flex justify-between items-start mb-4';
+        const title = document.createElement('h4');
+        title.className = 'text-2xl font-serif text-charcoal';
+        title.textContent = s.title;
+        const icon = document.createElement('i');
+        icon.setAttribute('data-lucide', SERVICE_ICONS.includes(s.icon) ? s.icon : 'grid');
+        icon.className = 'w-6 h-6 text-copper';
+        heading.append(title, icon);
+        const description = document.createElement('p');
+        description.className = 'text-stone-500 text-sm leading-relaxed mb-6';
+        description.textContent = s.description;
+        const inquire = document.createElement('button');
+        inquire.type = 'button';
+        inquire.className = 'text-xs font-bold uppercase tracking-widest text-copper border-b-2 border-copper/20 hover:border-copper transition-all pb-1';
+        inquire.textContent = 'Inquire Now';
+        inquire.addEventListener('click', () => window.openModal());
+        details.append(heading, description, inquire);
         if (s.image) {
             const frame = document.createElement('div');
             frame.className = 'h-64 overflow-hidden';
@@ -130,9 +147,33 @@ function renderServices(services) {
             image.className = 'w-full h-full object-cover group-hover:scale-105 transition-transform duration-700';
             frame.append(image); card.prepend(frame);
         }
+        card.append(details);
         grid.appendChild(card);
     });
     lucide.createIcons();
+}
+
+function renderServiceOptions(services) {
+    const select = document.querySelector('#modal-quote-form select');
+    if (!select) return;
+    select.replaceChildren();
+    if (!services.length) {
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = 'No services available yet';
+        option.disabled = true;
+        option.selected = true;
+        select.append(option);
+        select.disabled = true;
+        return;
+    }
+    select.disabled = false;
+    for (const service of services) {
+        const option = document.createElement('option');
+        option.value = service.title;
+        option.textContent = service.title;
+        select.append(option);
+    }
 }
 
 function renderGallery(items) {

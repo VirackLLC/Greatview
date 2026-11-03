@@ -27,6 +27,7 @@ Use a new/dedicated Supabase project so existing permissive Storage policies can
 
 1. Create a Supabase project in your own account. Keep its database password and service-role/secret keys private; this application does not need them.
 2. Open SQL Editor and run **`supabase/setup.sql`**. It creates the content table, two-role account allowlist, validated publish function, and `site-photos` bucket with approved-editor-only upload rules. It preserves and promotes an existing single-owner account if upgrading this setup. Do not weaken or disable RLS.
+   - If this project already uses the original photo-only service editor, run the updated `supabase/setup.sql` once before publishing service edits. It updates the server-side content checks without replacing saved website content or deleting photos. The website and admin convert the existing five photo slots to editable services when loaded.
 3. Locally run:
 
    ```sh

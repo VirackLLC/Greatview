@@ -1,9 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
-import { SERVICE_NAMES, initialServiceArea, validateLicense, validateServiceArea, movePhoto, removePhoto } from '../shared/content.mjs';
+import { MAX_SERVICES, MAX_SERVICE_TITLE_LENGTH, MAX_SERVICE_DESCRIPTION_LENGTH, SERVICE_ICONS, initialServiceArea, normalizeServices, validateServices, validateLicense, validateServiceArea, movePhoto, moveService, removePhoto } from '../shared/content.mjs';
 import { optimizePhoto } from './photos.js';
 
 const $ = id => document.getElementById(id);
-let client, user, content, savedContent, version, selected, uploadTarget, draggedId;
+let client, user, content, savedContent, version, selected, uploadTarget, draggedId, originalServices = [];
 let busy = false, dirty = false, authGeneration = 0, recoveryMode = false;
 let isOwner = false, openingSessionId = null, passwordFlow = null;
 const clone = value => JSON.parse(JSON.stringify(value));
@@ -48,6 +48,9 @@ async function start() {
     const response = await fetch('/api/config', { cache: 'no-store' });
     if (!response.ok) { showPanel('setup-panel'); return; }
     const config = await response.json();
+    const originalResponse = await fetch('/data.json', { cache: 'force-cache' });
+    if (!originalResponse.ok) throw new Error('Website content is unavailable.');
+    originalServices = (await originalResponse.json()).services;
     recoveryMode = new URLSearchParams(location.search).get('recover') === '1' ||
       new URLSearchParams(location.hash.slice(1)).get('type') === 'recovery';
     client = createClient(config.url, config.key, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
@@ -58,7 +61,7 @@ async function start() {
         user = content = savedContent = null; dirty = false;
         isOwner = false; openingSessionId = null; passwordFlow = null;
         $('photo-dialog').close();
-        $('main-photos').replaceChildren(); $('gallery-photos').replaceChildren(); $('featured-photos').replaceChildren();
+        $('main-photos').replaceChildren(); $('services-list').replaceChildren(); $('gallery-photos').replaceChildren(); $('featured-photos').replaceChildren();
         $('license-form').reset(); $('service-area-form').reset();
         recoveryMode = false;
         showPanel('login-panel');
@@ -107,7 +110,11 @@ async function openEditor(session) {
     if (generation !== authGeneration) return;
     user = session.user;
     isOwner = ownerStatus;
-    content = { ...clone(data.content), serviceArea: data.content.serviceArea ?? initialServiceArea() };
+    content = {
+      ...clone(data.content),
+      services: normalizeServices(data.content.services, originalServices),
+      serviceArea: data.content.serviceArea ?? initialServiceArea()
+    };
     savedContent = clone(content); version = data.version;
     $('account-role').textContent = isOwner ? 'Permanent owner' : 'Temporary editor';
     $('account-description').textContent = isOwner
@@ -258,12 +265,15 @@ $('logout').addEventListener('click', async () => {
 
 function photoUrl(section, key) {
   if (section === 'gallery') return content.gallery.find(photo => photo.id === key)?.url;
-  if (section === 'services') return content.services[key];
+  if (section === 'services') return content.services.find(service => service.id === key)?.image;
   return content[section];
 }
 function setPhoto(section, key, url) {
   if (section === 'gallery') content.gallery.find(photo => photo.id === key).url = url;
-  else if (section === 'services') content.services[key] = url;
+  else if (section === 'services') {
+    const service = content.services.find(item => item.id === key);
+    if (service) service.image = url;
+  }
   else content[section] = url;
 }
 function button(text, action, label = text) {
@@ -328,8 +338,125 @@ function photoCard(section, key, label) {
   card.append(preview, info, actions);
   return card;
 }
+function serviceAdminCard(service, index) {
+  const card = document.createElement('article');
+  card.className = 'service-admin-card';
+  card.dataset.serviceId = service.id;
+
+  const heading = document.createElement('div');
+  heading.className = 'service-admin-heading';
+  const position = document.createElement('h3');
+  position.textContent = `Service ${index + 1}`;
+  heading.append(position);
+
+  const nameField = document.createElement('div');
+  nameField.className = 'field-group';
+  const nameId = `service-name-${service.id}`;
+  const nameLabel = document.createElement('label');
+  nameLabel.htmlFor = nameId;
+  nameLabel.textContent = 'Service name';
+  const nameInput = document.createElement('input');
+  nameInput.id = nameId;
+  nameInput.className = 'service-name-input';
+  nameInput.type = 'text';
+  nameInput.maxLength = MAX_SERVICE_TITLE_LENGTH;
+  nameInput.required = true;
+  nameInput.placeholder = 'For example, Patio Pavers';
+  nameInput.value = service.title;
+  nameInput.setAttribute('aria-label', `Service ${index + 1} name`);
+  let moveEarlier, moveLater, remove, photoButton;
+  const updateActionLabels = () => {
+    const label = service.title.trim() || `service ${index + 1}`;
+    moveEarlier?.setAttribute('aria-label', `Move ${label} earlier`);
+    moveLater?.setAttribute('aria-label', `Move ${label} later`);
+    remove?.setAttribute('aria-label', `Remove ${label} service`);
+    photoButton?.setAttribute('aria-label', `${photoUrl('services', service.id) ? 'Replace' : 'Add'} photo for ${label}`);
+  };
+  nameInput.addEventListener('input', () => {
+    service.title = nameInput.value;
+    position.textContent = service.title.trim() || `Service ${index + 1}`;
+    updateActionLabels();
+    markDirty();
+  });
+  nameField.append(nameLabel, nameInput);
+
+  const descriptionField = document.createElement('div');
+  descriptionField.className = 'field-group';
+  const descriptionId = `service-description-${service.id}`;
+  const descriptionLabel = document.createElement('label');
+  descriptionLabel.htmlFor = descriptionId;
+  descriptionLabel.textContent = 'Description';
+  const descriptionInput = document.createElement('textarea');
+  descriptionInput.id = descriptionId;
+  descriptionInput.className = 'service-description-input';
+  descriptionInput.rows = 3;
+  descriptionInput.maxLength = MAX_SERVICE_DESCRIPTION_LENGTH;
+  descriptionInput.required = true;
+  descriptionInput.placeholder = 'Describe this service for customers';
+  descriptionInput.value = service.description;
+  descriptionInput.setAttribute('aria-label', `Service ${index + 1} description`);
+  descriptionInput.addEventListener('input', () => { service.description = descriptionInput.value; markDirty(); });
+  descriptionField.append(descriptionLabel, descriptionInput);
+
+  const photo = photoUrl('services', service.id);
+  photoButton = button(photo ? '' : '＋ Add photo', () => {
+    const label = `${service.title.trim() || `Service ${index + 1}`} photo`;
+    if (photoUrl('services', service.id)) openPhoto('services', service.id, label);
+    else chooseUpload({ section: 'services', key: service.id });
+  }, `${photo ? 'Replace' : 'Add'} photo for ${service.title.trim() || `service ${index + 1}`}`);
+  photoButton.className = 'service-photo-button';
+  if (photo) {
+    const image = new Image();
+    image.src = photo;
+    image.alt = '';
+    image.loading = 'lazy';
+    const overlay = document.createElement('span');
+    overlay.className = 'service-photo-overlay';
+    overlay.textContent = 'Tap to replace photo';
+    photoButton.append(image, overlay);
+  } else {
+    photoButton.classList.add('empty-photo');
+  }
+
+  const actions = document.createElement('div');
+  actions.className = 'service-admin-actions';
+  moveEarlier = button('Move up', () => move(-1), `Move ${service.title.trim() || `service ${index + 1}`} earlier`);
+  moveLater = button('Move down', () => move(1), `Move ${service.title.trim() || `service ${index + 1}`} later`);
+  remove = button('Remove service', () => {
+    if (busy || !confirm(`Remove ${service.title.trim() || 'this service'} from the website? It will only change after you save.`)) return;
+    content.services = content.services.filter(item => item.id !== service.id);
+    renderServices(); markDirty();
+    message('editor-status', 'Service removed. Save Changes to publish it.');
+  }, `Remove ${service.title.trim() || `service ${index + 1}`} service`);
+  remove.classList.add('service-remove-button');
+  moveEarlier.disabled = index === 0;
+  moveLater.disabled = index === content.services.length - 1;
+  updateActionLabels();
+  actions.append(moveEarlier, moveLater, remove);
+
+  function move(direction) {
+    if (busy || !moveService(content.services, service.id, direction)) return;
+    renderServices(); markDirty();
+    document.querySelector(`[data-service-id="${service.id}"] .service-name-input`)?.focus();
+    message('editor-status', 'Service order updated. Save Changes to publish it.');
+  }
+
+  card.append(heading, photoButton, nameField, descriptionField, actions);
+  return card;
+}
+function renderServices() {
+  $('services-list').replaceChildren(...content.services.map(serviceAdminCard));
+  if (!content.services.length) {
+    const empty = document.createElement('p');
+    empty.className = 'empty-state';
+    empty.textContent = 'No services yet. Add one whenever you are ready.';
+    $('services-list').append(empty);
+  }
+  $('add-service').disabled = content.services.length >= MAX_SERVICES || busy;
+}
 function render() {
-  $('main-photos').replaceChildren(photoCard('hero', null, 'Homepage Cover'), ...SERVICE_NAMES.map((name, i) => photoCard('services', i, name)));
+  $('main-photos').replaceChildren(photoCard('hero', null, 'Homepage Cover'));
+  renderServices();
   $('featured-photos').replaceChildren(photoCard('featured', null, 'Project Spotlight'));
   $('gallery-photos').replaceChildren(...content.gallery.map((photo, i) => photoCard('gallery', photo.id, `Project ${i + 1}`)));
   if (!content.gallery.length) {
@@ -337,6 +464,14 @@ function render() {
     $('gallery-photos').append(empty);
   }
 }
+ $('add-service').addEventListener('click', () => {
+  if (busy || content.services.length >= MAX_SERVICES) return;
+  const service = { id: crypto.randomUUID(), title: '', description: '', icon: SERVICE_ICONS[0], image: null };
+  content.services.push(service);
+  renderServices(); markDirty();
+  document.querySelector(`[data-service-id="${service.id}"] .service-name-input`)?.focus();
+  message('editor-status', 'New service added. Add its name and description, then save your changes.');
+});
 function renderLicense() {
   $('business-name').value = content.license.businessName;
   $('roc-number').value = content.license.number;
@@ -428,11 +563,17 @@ $('photo-upload').addEventListener('change', async () => {
   }
 });
 $('discard').addEventListener('click', () => {
-  if (!confirm('Discard all unsaved photo, service-area, and license changes?')) return;
+  if (!confirm('Discard all unsaved photo, service, service-area, and license changes?')) return;
   content = clone(savedContent); render(); renderServiceArea(); renderLicense(); markDirty(); message('editor-status', 'Unsaved changes discarded.');
 });
 $('save').addEventListener('click', async () => {
   if (!dirty || busy) return;
+  const servicesError = validateServices(content.services);
+  if (servicesError) {
+    message('save-status', servicesError, true);
+    document.querySelector('.service-name-input:invalid')?.focus();
+    return;
+  }
   const serviceAreaError = validateServiceArea(content.serviceArea);
   if (serviceAreaError) { message('save-status', serviceAreaError, true); return; }
   const error = validateLicense(content.license);

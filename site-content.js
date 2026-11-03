@@ -1,4 +1,4 @@
-import { initialContent, initialServiceArea, validateLicense } from './shared/content.mjs';
+import { initialContent, initialServiceArea, normalizeServices, validateLicense } from './shared/content.mjs';
 
 export async function loadSiteContent(original) {
   let content = initialContent(original);
@@ -13,6 +13,7 @@ export async function loadSiteContent(original) {
       content = {
         ...initialContent(original),
         ...published.content,
+        services: normalizeServices(published.content.services, original.services),
         serviceArea: initialServiceArea({ serviceArea: published.content.serviceArea })
       };
     }
@@ -37,6 +38,11 @@ export async function loadSiteContent(original) {
     element.textContent = content.serviceArea.cities.join(', ');
     element.hidden = content.serviceArea.cities.length === 0;
   });
+  const servicesSection = document.getElementById('services');
+  if (servicesSection) {
+    servicesSection.hidden = content.services.length === 0;
+    document.querySelectorAll('a[href="#services"]').forEach(link => { link.hidden = content.services.length === 0; });
+  }
   if (!content.gallery.length) {
     document.getElementById('gallery').hidden = true;
     document.querySelectorAll('a[href="#gallery"]').forEach(link => { link.hidden = true; });
@@ -48,7 +54,7 @@ export async function loadSiteContent(original) {
     document.getElementById('business-license').hidden = false;
   }
   return {
-    services: original.services.map((service, i) => ({ ...service, image: content.services[i] || null })),
+    services: content.services,
     gallery: content.gallery
   };
 }
