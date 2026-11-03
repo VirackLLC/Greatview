@@ -27,7 +27,7 @@ Use a new/dedicated Supabase project so existing permissive Storage policies can
 
 1. Create a Supabase project in your own account. Keep its database password and service-role/secret keys private; this application does not need them.
 2. Open SQL Editor and run **`supabase/setup.sql`**. It creates the content table, two-role account allowlist, validated publish function, and `site-photos` bucket with approved-editor-only upload rules. It preserves and promotes an existing single-owner account if upgrading this setup. Do not weaken or disable RLS.
-   - If this project already uses the original photo-only service editor, run the updated `supabase/setup.sql` once before publishing service edits. It updates the server-side content checks without replacing saved website content or deleting photos. The website and admin convert the existing five photo slots to editable services when loaded.
+   - If this project already uses the earlier service editor, run the updated `supabase/setup.sql` before saving service albums. It updates the server-side content checks without replacing saved website content or deleting photos. Existing service photos are carried into each service album automatically.
 3. Locally run:
 
    ```sh
@@ -103,15 +103,16 @@ For the browser suite, install a Playwright-compatible Chromium on your test mac
 
 1. Visit **greatviewhardscape.com/admin**.
 2. At your first sign-in, replace the temporary password with a private password before the editing tools open. Later, use **Change password** in **Your access** or **Forgot your password?**.
-3. Tap a thumbnail, then **Replace photo**, and choose a phone photo. Or add project photos with **Add project photo**.
-4. Reorder gallery photos by dragging on desktop or using the arrow buttons on any device. Tap a photo to choose it as the homepage cover or featured project.
-5. Delete requires confirmation. Removing a gallery photo does not remove it from other sections where you chose to use it. To remove those, open that section too.
-6. Under **Service Area**, edit the area name and type one city per line. You may leave the city list blank.
-7. Under **Business License**, enter the registered business name and the six-digit ROC number, including leading zeros. The official verification link is optional. To remove the license display, clear all three fields.
-8. Tap **Save Changes**, wait for the saved confirmation, then **View website**. Open public pages show changes on their next load/refresh. **Undo changes** discards unsaved edits.
-9. The permanent owner can remove the temporary editor under **Your access**. Use **Log out** on shared devices. Session tokens are stored by Supabase in that browser; protect the owner email account, ideally with MFA.
+3. Under **Our Services**, tap **Edit** on a service to change its name or description. Use **Add Photos** to select one or several pictures from your phone. Choose **Set cover**, add optional captions, and change photo order with drag and drop on desktop or the arrow buttons on any device. Each service can have up to 20 photos.
+4. Tap a service photo to view it full size, replace it, or remove it after confirmation. Removing a photo only unlinks it from the website; its stored file is retained. Save Changes publishes the album and its service cover.
+5. On the public site, visitors can open a service to browse its project album. The separate **Project Gallery** remains the overall gallery; use its existing controls to add, reorder, feature or remove those photos.
+6. Tap a homepage thumbnail, then **Replace photo**, and choose a phone photo. Tap a photo to choose it as the homepage cover or featured project.
+7. Under **Service Area**, edit the area name and type one city per line. You may leave the city list blank.
+8. Under **Business License**, enter the registered business name and the six-digit ROC number, including leading zeros. The official verification link is optional. To remove the license display, clear all three fields.
+9. Tap **Save Changes**, wait for the saved confirmation, then **View website**. Open public pages show changes on their next load/refresh. **Undo changes** discards unsaved edits.
+10. The permanent owner can remove the temporary editor under **Your access**. Use **Log out** on shared devices. Session tokens are stored by Supabase in that browser; protect the owner email account, ideally with MFA.
 
-Uploads are resized to a maximum 2400-pixel long edge and encoded as WebP at quality 88%, without carrying source filenames or photo GPS metadata. JPEG, PNG and WebP work in modern browsers. HEIC/HEIF requires browser decoding support; if unavailable, the owner gets instructions to export JPEG or use their phone's “Most Compatible” format. Up to 80 gallery photos are supported.
+Uploads are resized to a maximum 2400-pixel long edge and encoded as WebP at quality 88%, without carrying source filenames or photo GPS metadata. JPEG, PNG and WebP work in modern browsers. HEIC/HEIF requires browser decoding support; if unavailable, the owner gets instructions to export JPEG or use their phone's “Most Compatible” format. Up to 80 general gallery photos and 20 photos per service are supported.
 
 The public license block appears directly below the homepage hero on a solid background, not behind a photo or only in the footer. License format is checked, **not** its official status. The site never claims “ROC Verified.” Accepted verification hosts are `roc.az.gov`, its subdomains, and the official contractor-search portal `azroc.my.site.com`. The Arizona ROC homepage link is always included in the published license block.
 
@@ -122,7 +123,7 @@ The local automated tests do not prove real SMTP delivery, Supabase project conf
 - Verify original homepage photos, responsive layout, metadata, contact links, quote modal and gallery lightbox.
 - Sign in to both approved accounts using their temporary passwords; verify each must set a new password before editing. Confirm the permanent owner can remove temporary access and the temporary editor cannot; exercise password recovery on a staging inbox. Confirm signups are disabled and an unapproved test user cannot publish or upload, including via direct API calls.
 - Save a test-only service-area name and city list, verify they render in the hero/footer, then restore the original coverage text.
-- On phone and desktop, add, replace, cancel/delete, reorder with drag and arrow controls, choose cover/featured, save, refresh, log out/in, and confirm uploads persist.
+- On phone and desktop, add service albums, replace and remove individual photos, edit captions, choose a cover, reorder with drag and arrow controls, save, refresh, log out/in, and confirm every photo persists. Confirm the public service card opens its album and the lightbox can navigate photos.
 - Confirm an unsaved edit does not change the public page; a saved one does. Confirm a second stale tab is prevented from overwriting a newer save.
 - Delete the last gallery photo and each fixed photo slot; confirm there are no empty/broken public image elements.
 - Enter test-only ROC information on staging, confirm its prominent public display and safe official links, then clear it. **Do not publish an invented license on the live site.** The owner must supply the actual business name and number.

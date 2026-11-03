@@ -440,76 +440,190 @@ input:focus {
   font-weight: 700;
 }
 .photo-actions button:hover { color: var(--copper-deep); background: #f7eee7; }
-.service-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
-  gap: 15px;
-}
+.service-list { display: grid; grid-template-columns: 1fr; gap: 12px; }
 .service-admin-card {
-  display: grid;
   min-width: 0;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
-  gap: 13px;
-  align-content: start;
-  padding: 14px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: #fffefa;
-}
-.service-admin-heading { grid-column: 1 / -1; }
-.service-admin-heading h3 { margin: 0; color: var(--copper-deep); font: italic 16px var(--serif); }
-.service-admin-card .field-group label { font-size: 11px; }
-.service-admin-card .field-group input,
-.service-admin-card .field-group textarea { min-width: 0; width: 100%; }
-.service-admin-card .field-group textarea { min-height: 90px; }
-.service-photo-button {
-  position: relative;
-  display: grid;
-  min-height: 122px;
-  place-items: center;
-  align-self: stretch;
-  padding: 0;
   overflow: hidden;
-  border: 1px dashed #cbbcac;
-  border-radius: 8px;
-  color: var(--muted);
-  background: #e6ddd1;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fffefa;
+  transition: border-color .18s ease, box-shadow .18s ease;
+}
+.service-admin-card:hover { border-color: #c99b7e; }
+.service-admin-card.dragging { opacity: .55; }
+.service-admin-card.drop-target,
+.service-photo-card.drop-target { outline: 2px dashed var(--copper); outline-offset: 2px; }
+.service-card-summary {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+}
+.service-drag-handle,
+.service-photo-drag-handle {
+  display: grid;
+  min-width: 30px;
+  min-height: 40px;
+  place-items: center;
+  color: #938274;
+  cursor: grab;
+  font-size: 20px;
+  touch-action: none;
+}
+.service-summary-button {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 13px;
+  padding: 0;
+  border: 0;
+  color: var(--ink);
+  background: transparent;
+  text-align: left;
   cursor: pointer;
-  font-size: 11px;
+}
+.service-summary-button:focus-visible,
+.service-edit-toggle:focus-visible,
+.service-move-button:focus-visible,
+.service-photo-card button:focus-visible,
+.service-photo-caption:focus-visible,
+.service-name-input:focus-visible,
+.service-description-input:focus-visible {
+  outline: 3px solid rgba(172, 105, 70, .55);
+  outline-offset: 2px;
+}
+.service-summary-cover {
+  display: grid;
+  width: 86px;
+  height: 68px;
+  flex: 0 0 auto;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 7px;
+  color: #755942;
+  background: #eee6dc;
+  font-size: 10px;
   font-weight: 700;
 }
-.service-photo-button img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.service-photo-button:not(.empty-photo) { color: white; text-shadow: 0 1px 4px #000; }
-.service-photo-overlay {
-  position: relative;
-  z-index: 1;
-  padding: 4px 9px;
-  border-radius: 20px;
-  color: white;
-  background: rgba(41, 39, 33, .72);
-  font-size: 10px;
+.service-summary-cover img { width: 100%; height: 100%; object-fit: cover; }
+.service-summary-cover-empty { border: 1px dashed #cbbcac; }
+.service-summary-text { display: grid; min-width: 0; gap: 5px; }
+.service-summary-name {
+  overflow: hidden;
+  font: 500 17px/1.3 var(--serif);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.service-admin-actions {
-  display: flex;
-  grid-column: 1 / -1;
-  align-items: center;
-  gap: 7px;
-}
-.service-admin-actions button {
+.service-summary-count { color: var(--muted); font-size: 11px; }
+.service-summary-actions { display: flex; align-items: center; gap: 5px; }
+.service-edit-toggle,
+.service-move-button {
+  display: grid;
+  min-width: 42px;
   min-height: 42px;
-  flex: 1;
-  padding: 4px 8px;
+  place-items: center;
+  padding: 0 8px;
   border: 1px solid var(--line);
   border-radius: 6px;
+  color: var(--copper-deep);
+  background: #fffefa;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+}
+.service-edit-toggle:hover:not(:disabled),
+.service-move-button:hover:not(:disabled) { background: #f7eee7; }
+.service-move-button { color: var(--muted); font-size: 16px; }
+.service-move-button:disabled,
+.service-edit-toggle:disabled { cursor: not-allowed; opacity: .4; }
+.service-card-editor { display: grid; gap: 20px; padding: 18px; border-top: 1px solid var(--line); }
+.service-card-editor[hidden] { display: none; }
+.service-admin-card .field-group label { font-size: 12px; }
+.service-admin-card .field-group input,
+.service-admin-card .field-group textarea { min-width: 0; width: 100%; }
+.service-admin-card .field-group textarea { min-height: 92px; resize: none; overflow: hidden; line-height: 1.65; }
+.service-description-field { grid-column: 1 / -1; }
+.service-album { display: grid; gap: 13px; }
+.service-album-heading { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+.service-album-heading h4 { margin: 0; font: 500 17px/1.35 var(--serif); }
+.service-album-heading p { margin: 4px 0 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
+.add-service-photos { flex: 0 0 auto; min-height: 44px; }
+.service-upload-feedback { display: grid; gap: 5px; color: var(--copper-deep); font-size: 11px; }
+.service-upload-feedback progress { width: 100%; height: 9px; accent-color: var(--copper); }
+.service-photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 168px), 1fr));
+  gap: 12px;
+}
+.service-photo-card {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  align-content: start;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+}
+.service-photo-thumbnail {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 5px;
+  background: #eee6dc;
+  cursor: zoom-in;
+}
+.service-photo-thumbnail img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.service-photo-cover-badge {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  padding: 4px 8px;
+  border-radius: 20px;
+  color: white;
+  background: rgba(42, 38, 33, .78);
+  font-size: 9px;
+  font-weight: 700;
+}
+.service-photo-cover-badge:empty { display: none; }
+.service-photo-caption { min-height: 40px !important; padding: 8px 9px !important; font-size: 11px !important; }
+.service-photo-actions { display: grid; grid-template-columns: minmax(0, 1fr) 40px 40px; gap: 5px; }
+.service-photo-actions button,
+.service-photo-remove {
+  min-width: 0;
+  min-height: 40px;
+  padding: 5px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
   color: var(--muted);
-  background: transparent;
+  background: white;
   cursor: pointer;
   font-size: 10px;
   font-weight: 700;
 }
-.service-admin-actions button:hover:not(:disabled) { color: var(--copper-deep); background: #f7eee7; }
-.service-admin-actions .service-remove-button { color: var(--danger); }
-.service-admin-actions button:disabled { cursor: not-allowed; opacity: .45; }
+.service-photo-actions button:hover:not(:disabled),
+.service-photo-remove:hover { color: var(--copper-deep); background: #f7eee7; }
+.service-photo-actions button:disabled { cursor: default; opacity: .55; }
+.service-photo-remove { grid-column: 1 / -1; width: 100%; color: var(--danger); }
+.service-album-empty { grid-column: 1 / -1; margin: 0; padding: 20px; border: 1px dashed #cbbcac; border-radius: 8px; color: var(--muted); background: rgba(247, 243, 237, .55); font-size: 12px; text-align: center; }
+.service-editor-actions { display: flex; justify-content: flex-end; gap: 9px; padding-top: 5px; }
+.service-editor-actions .button { min-height: 44px; }
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
 .empty-photo, .empty-state {
   display: grid;
   min-height: 130px;
@@ -665,10 +779,22 @@ input:focus {
   .photo-actions { padding: 0 4px 4px; }
   .photo-actions button { font-size: 9px; }
   .service-list { grid-template-columns: 1fr; gap: 11px; }
-  .service-admin-card { grid-template-columns: minmax(90px, .7fr) minmax(0, 1.3fr); gap: 10px; padding: 11px; }
-  .service-photo-button { min-height: 112px; }
-  .service-admin-actions { gap: 5px; }
-  .service-admin-actions button { padding: 4px 5px; font-size: 9px; }
+  .service-card-summary { grid-template-columns: 20px minmax(0, 1fr); gap: 8px; padding: 9px; }
+  .service-summary-button { grid-column: 2; gap: 9px; }
+  .service-summary-cover { width: 68px; height: 58px; }
+  .service-summary-name { font-size: 15px; }
+  .service-summary-actions { grid-column: 2; justify-content: flex-end; gap: 5px; }
+  .service-move-button, .service-edit-toggle { min-width: 44px; min-height: 44px; }
+  .service-card-editor { gap: 16px; padding: 14px 11px; }
+  .service-album-heading { align-items: stretch; flex-direction: column; }
+  .add-service-photos { width: 100%; }
+  .service-photo-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .service-photo-card { padding: 6px; }
+  .service-photo-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
+  .service-photo-actions button:first-child { grid-column: 1 / -1; }
+  .service-photo-actions button, .service-photo-remove { min-height: 44px; font-size: 9px; }
+  .service-editor-actions { justify-content: stretch; }
+  .service-editor-actions .button { flex: 1; padding: 0 9px; font-size: 11px; }
   .license-form { grid-template-columns: 1fr; gap: 14px; }
   .field-group:last-child { grid-column: auto; }
   .page-footer { width: calc(100% - 32px); font-size: 9px; letter-spacing: .05em; }
@@ -684,6 +810,10 @@ input:focus {
   .save-bar-inner { justify-content: flex-end; }
   .section-heading-with-action { grid-template-columns: 24px 1fr; }
   .photo-preview { height: 100px; }
+  .service-card-summary { gap: 5px; padding: 7px; }
+  .service-summary-cover { width: 58px; height: 54px; }
+  .service-summary-actions { gap: 3px; }
+  .service-move-button, .service-edit-toggle { min-width: 42px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -1,6 +1,8 @@
 export const MAX_SERVICES = 20;
 export const MAX_SERVICE_TITLE_LENGTH = 80;
 export const MAX_SERVICE_DESCRIPTION_LENGTH = 600;
+export const MAX_SERVICE_PHOTOS = 20;
+export const MAX_SERVICE_PHOTO_CAPTION_LENGTH = 160;
 export const SERVICE_ICONS = Object.freeze(['grid', 'sprout', 'mountain', 'droplets', 'pen-tool']);
 export const ORIGINAL_HERO = 'https://res.cloudinary.com/dgxsmxiax/image/upload/v1774069471/7193972578042583984_dprn9i.jpg';
 export const ORIGINAL_FEATURED = 'https://res.cloudinary.com/dgxsmxiax/image/upload/v1774069465/5228158948893782823_lnqlq1.jpg';
@@ -37,7 +39,7 @@ export function normalizeServices(services, defaults = []) {
       title: service.title,
       description: service.description || '',
       icon: SERVICE_ICONS.includes(service.icon) ? service.icon : 'grid',
-      image: services[index]
+      ...normalizeServiceAlbum([], services[index])
     }));
   }
   return services.filter(service => service && typeof service === 'object' && !Array.isArray(service)).map((service, index) => ({
@@ -45,8 +47,43 @@ export function normalizeServices(services, defaults = []) {
     title: typeof service.title === 'string' ? service.title : '',
     description: typeof service.description === 'string' ? service.description : '',
     icon: SERVICE_ICONS.includes(service.icon) ? service.icon : 'grid',
-    image: typeof service.image === 'string' ? service.image : null
+    ...normalizeServiceAlbum(service.photos, typeof service.image === 'string' ? service.image : null, service.coverPhotoId)
   }));
+}
+
+function normalizeServiceAlbum(rawPhotos, legacyImage = null, requestedCoverId = null) {
+  let photos = Array.isArray(rawPhotos)
+    ? rawPhotos.filter(photo => photo && typeof photo === 'object' && !Array.isArray(photo) && typeof photo.url === 'string')
+      .map((photo, index) => ({
+        id: typeof photo.id === 'string' && /^[a-zA-Z0-9-]{1,80}$/.test(photo.id) ? photo.id : `photo-${index + 1}`,
+        url: photo.url,
+        caption: typeof photo.caption === 'string' ? photo.caption : ''
+      }))
+    : [];
+
+  // Existing service photos were stored as a single image URL. Keep that image
+  // in the new album so the upgrade never removes a published photo.
+  if (!photos.length && typeof legacyImage === 'string' && legacyImage) {
+    photos = [{ id: 'legacy-photo-1', url: legacyImage, caption: '' }];
+  }
+
+  const seen = new Set();
+  photos = photos.map((photo, index) => {
+    let id = photo.id;
+    while (seen.has(id)) id = `photo-${index + 1}-${seen.size + 1}`;
+    seen.add(id);
+    return { ...photo, id };
+  });
+
+  const cover = photos.find(photo => photo.id === requestedCoverId) ||
+    photos.find(photo => photo.url === legacyImage) ||
+    photos[0] ||
+    null;
+  return {
+    photos,
+    coverPhotoId: cover?.id ?? null,
+    image: cover?.url ?? null
+  };
 }
 
 export function validateServices(services) {
@@ -69,10 +106,27 @@ export function validateServices(services) {
       return `Enter a short description for every service (up to ${MAX_SERVICE_DESCRIPTION_LENGTH} characters).`;
     }
     if (!SERVICE_ICONS.includes(service.icon)) return 'Please check the service details.';
-    if (service.image !== null && (typeof service.image !== 'string' || service.image.length > 1000 ||
-      !/^https:\/\/res\.cloudinary\.com\/dgxsmxiax\/image\/upload\/[A-Za-z0-9_./-]+$/.test(service.image) &&
-      !/^https:\/\/[a-z0-9-]+\.supabase\.co\/storage\/v1\/object\/public\/site-photos\/[a-f0-9-]{36}\/[a-f0-9-]{36}\.webp$/.test(service.image))) {
-      return 'Please choose a valid photo for each service.';
+    if (!Array.isArray(service.photos) || service.photos.length > MAX_SERVICE_PHOTOS) {
+      return `Each service can have up to ${MAX_SERVICE_PHOTOS} project photos.`;
+    }
+    const photoIds = new Set();
+    for (const photo of service.photos) {
+      if (!photo || typeof photo !== 'object' || Array.isArray(photo) ||
+        typeof photo.id !== 'string' || !/^[a-zA-Z0-9-]{1,80}$/.test(photo.id) || photoIds.has(photo.id) ||
+        typeof photo.caption !== 'string' || photo.caption.length > MAX_SERVICE_PHOTO_CAPTION_LENGTH ||
+        typeof photo.url !== 'string' || photo.url.length > 1000 ||
+        !/^https:\/\/res\.cloudinary\.com\/dgxsmxiax\/image\/upload\/[A-Za-z0-9_./-]+$/.test(photo.url) &&
+        !/^https:\/\/[a-z0-9-]+\.supabase\.co\/storage\/v1\/object\/public\/site-photos\/[a-f0-9-]{36}\/[a-f0-9-]{36}\.webp$/.test(photo.url)) {
+        return 'Please check the photos and captions for each service.';
+      }
+      photoIds.add(photo.id);
+    }
+    if (service.coverPhotoId !== null && (typeof service.coverPhotoId !== 'string' || !photoIds.has(service.coverPhotoId))) {
+      return 'Choose a cover photo from that service’s album.';
+    }
+    const cover = service.photos.find(photo => photo.id === service.coverPhotoId);
+    if ((cover?.url ?? null) !== service.image) {
+      return 'The service cover photo needs to match its album.';
     }
   }
   return '';
@@ -126,11 +180,39 @@ export function moveService(services, id, direction) {
   return movePhoto(services, id, direction);
 }
 
+export function moveServicePhoto(service, id, direction) {
+  return movePhoto(service.photos, id, direction);
+}
+
+export function setServiceCover(service, photoId) {
+  const photo = service.photos.find(item => item.id === photoId);
+  if (!photo) return false;
+  service.coverPhotoId = photo.id;
+  service.image = photo.url;
+  return true;
+}
+
+export function removeServicePhoto(service, photoId) {
+  const index = service.photos.findIndex(item => item.id === photoId);
+  if (index < 0) return false;
+  const removedCover = service.coverPhotoId === photoId;
+  service.photos.splice(index, 1);
+  if (removedCover) {
+    service.coverPhotoId = service.photos[0]?.id ?? null;
+    service.image = service.photos[0]?.url ?? null;
+  }
+  return true;
+}
+
 export function removePhoto(content, section, key) {
   if (section === 'gallery') content.gallery = content.gallery.filter(photo => photo.id !== key);
   else if (section === 'services') {
     const service = content.services.find(item => item.id === key);
-    if (service) service.image = null;
+    if (service) {
+      service.photos = [];
+      service.coverPhotoId = null;
+      service.image = null;
+    }
   }
   else content[section] = null;
 }
