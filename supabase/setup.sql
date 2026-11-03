@@ -141,14 +141,14 @@ $$;
 create or replace function app_private.valid_content(doc jsonb)
 returns boolean language plpgsql immutable set search_path = ''
 as $$
-declare item jsonb; license jsonb; gallery_id text; service_id text;
+declare item jsonb; photo jsonb; license jsonb; gallery_id text; service_id text; photo_id text; cover_id text; cover_count integer;
 begin
-  if doc is null or jsonb_typeof(doc) <> 'object' or octet_length(doc::text) > 100000 then return false; end if;
+  if doc is null or jsonb_typeof(doc) <> 'object' or octet_length(doc::text) > 250000 then return false; end if;
   if not (doc ?& array['hero','featured','services','gallery','license','serviceArea']) then return false; end if;
   if not app_private.valid_photo_url(doc->'hero') or not app_private.valid_photo_url(doc->'featured') then return false; end if;
   if jsonb_typeof(doc->'services') <> 'array' or jsonb_array_length(doc->'services') > 20 then return false; end if;
   for item in select jsonb_array_elements(doc->'services') loop
-    if jsonb_typeof(item) <> 'object' or not (item ?& array['id','title','description','icon','image']) then return false; end if;
+    if jsonb_typeof(item) <> 'object' or not (item ?& array['id','title','description','icon','image','photos','coverPhotoId']) then return false; end if;
     service_id := item->>'id';
     if jsonb_typeof(item->'id') <> 'string' or service_id !~ '^[a-zA-Z0-9-]{1,80}$' then return false; end if;
     if jsonb_typeof(item->'title') <> 'string' or length(btrim(item->>'title')) < 1
@@ -157,6 +157,25 @@ begin
       or length(item->>'description') > 600 then return false; end if;
     if jsonb_typeof(item->'icon') <> 'string' or item->>'icon' not in ('grid','sprout','mountain','droplets','pen-tool') then return false; end if;
     if not app_private.valid_photo_url(item->'image') then return false; end if;
+    if jsonb_typeof(item->'photos') <> 'array' or jsonb_array_length(item->'photos') > 20 then return false; end if;
+    for photo in select jsonb_array_elements(item->'photos') loop
+      if jsonb_typeof(photo) <> 'object' or not (photo ?& array['id','url','caption']) then return false; end if;
+      photo_id := photo->>'id';
+      if jsonb_typeof(photo->'id') <> 'string' or photo_id !~ '^[a-zA-Z0-9-]{1,80}$' then return false; end if;
+      if not app_private.valid_photo_url(photo->'url', false) then return false; end if;
+      if jsonb_typeof(photo->'caption') <> 'string' or length(photo->>'caption') > 160 then return false; end if;
+    end loop;
+    if (select count(*) <> count(distinct value->>'id') from jsonb_array_elements(item->'photos')) then return false; end if;
+    if jsonb_typeof(item->'coverPhotoId') = 'null' then
+      if item->'image' <> 'null'::jsonb or jsonb_array_length(item->'photos') <> 0 then return false; end if;
+    else
+      if jsonb_typeof(item->'coverPhotoId') <> 'string' then return false; end if;
+      cover_id := item->>'coverPhotoId';
+      select count(*) into cover_count
+        from jsonb_array_elements(item->'photos') album_photo
+        where album_photo->>'id' = cover_id and album_photo->'url' = item->'image';
+      if cover_count <> 1 then return false; end if;
+    end if;
   end loop;
   if (select count(*) <> count(distinct value->>'id') from jsonb_array_elements(doc->'services')) then return false; end if;
   if jsonb_typeof(doc->'gallery') <> 'array' or jsonb_array_length(doc->'gallery') > 80 then return false; end if;

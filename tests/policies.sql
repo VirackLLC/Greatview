@@ -103,27 +103,64 @@ select public.test_assert(public.publish_site(jsonb_set((select content from pub
 select public.test_assert(
   public.publish_site(
     jsonb_set(
+      jsonb_set(
+        jsonb_set(
+          (select content from public.site_content where id=1),
+          '{services,0,photos}',
+          jsonb_build_array(jsonb_build_object(
+            'id','album-photo-a',
+            'url','https://testproject.supabase.co/storage/v1/object/public/site-photos/11111111-1111-4111-a111-111111111111/33333333-3333-4333-a333-333333333333.webp',
+            'caption','Finished patio'
+          ))
+        ),
+        '{services,0,coverPhotoId}',
+        '"album-photo-a"'::jsonb
+      ),
+      '{services,0,image}',
+      '"https://testproject.supabase.co/storage/v1/object/public/site-photos/11111111-1111-4111-a111-111111111111/33333333-3333-4333-a333-333333333333.webp"'::jsonb
+    ),
+    4
+  ) = 5,
+  'owner can publish a service album with a cover and caption'
+);
+do $$ begin
+  perform public.publish_site(
+    jsonb_set((select content from public.site_content where id=1), '{services,0,photos,0,url}', '"https://evil.test/photo.webp"'::jsonb),
+    5
+  );
+  raise exception 'unsafe service photo URL accepted';
+exception when invalid_parameter_value then raise notice 'PASS: unsafe service photo URL rejected'; end $$;
+do $$ begin
+  perform public.publish_site(
+    jsonb_set((select content from public.site_content where id=1), '{services,0,coverPhotoId}', '"missing-photo"'::jsonb),
+    5
+  );
+  raise exception 'missing service cover accepted';
+exception when invalid_parameter_value then raise notice 'PASS: service cover must belong to the album'; end $$;
+select public.test_assert(
+  public.publish_site(
+    jsonb_set(
       (select content from public.site_content where id=1),
       '{services}',
       (select jsonb_agg(value) from jsonb_array_elements((select content->'services' from public.site_content where id=1))
        where value->>'title' <> 'Irrigation')
-      || jsonb_build_array(jsonb_build_object('id','service-new','title','Outdoor Kitchens','description','Built for Arizona evenings.','icon','grid','image',null))
+      || jsonb_build_array(jsonb_build_object('id','service-new','title','Outdoor Kitchens','description','Built for Arizona evenings.','icon','grid','image',null,'photos','[]'::jsonb,'coverPhotoId',null))
     ),
-    4
-  ) = 5,
+    5
+  ) = 6,
   'owner can add and remove services while preserving their content'
 );
 do $$ begin
   perform public.publish_site(
     jsonb_set((select content from public.site_content where id=1), '{services,0,title}', '""'::jsonb),
-    5
+    6
   );
   raise exception 'blank service title accepted';
 exception when invalid_parameter_value then raise notice 'PASS: blank service titles rejected'; end $$;
 do $$ begin
   perform public.publish_site(
     jsonb_set((select content from public.site_content where id=1), '{services,0,description}', '" "'::jsonb),
-    5
+    6
   );
   raise exception 'blank service description accepted';
 exception when invalid_parameter_value then raise notice 'PASS: blank service descriptions rejected'; end $$;
@@ -132,10 +169,18 @@ select public.test_assert(
     jsonb_set(
       (select content from public.site_content where id=1),
       '{services}',
-      (select jsonb_agg(jsonb_set(value, '{image}', 'null'::jsonb)) from jsonb_array_elements((select content->'services' from public.site_content where id=1)))
+      (select jsonb_agg(
+        jsonb_set(
+          jsonb_set(
+            jsonb_set(value, '{image}', 'null'::jsonb),
+            '{photos}', '[]'::jsonb
+          ),
+          '{coverPhotoId}', 'null'::jsonb
+        )
+      ) from jsonb_array_elements((select content->'services' from public.site_content where id=1)))
     ) || '{"hero":null,"featured":null,"gallery":[]}',
-    5
-  ) = 6,
+    6
+  ) = 7,
   'owner can remove all photos without empty URLs'
 );
 insert into storage.objects(bucket_id, name) values ('site-photos', '11111111-1111-4111-a111-111111111111/33333333-3333-4333-a333-333333333333.webp');
@@ -154,9 +199,9 @@ select public.test_assert((select count(*) = 2 from storage.objects), 'files can
 set role authenticated;
 select public.test_assert(public.remove_temporary_editor(), 'permanent owner can remove the temporary editor');
 select public.test_assert(public.can_edit_site() and public.is_site_owner(), 'removing the temporary editor leaves owner access intact');
-select public.test_assert((select version = 6 from public.site_content), 'revoking the editor preserves published content');
+select public.test_assert((select version = 7 from public.site_content), 'revoking the editor preserves published content');
 reset role;
 set role anon;
-select public.test_assert((select content->'license'->>'number' = '001234' and version=6 from public.site_content), 'public visitors see the saved license and current version');
+select public.test_assert((select content->'license'->>'number' = '001234' and version=7 from public.site_content), 'public visitors see the saved license and current version');
 select public.test_assert((select content->'serviceArea'->>'region' = 'East Valley' from public.site_content), 'public visitors see the published service area');
 reset role;

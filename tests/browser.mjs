@@ -25,8 +25,8 @@ try {
   });
   await baseline.goto(baseURL);
   await check('original website loads all services and gallery images', async () => {
-    await expect(baseline.locator('#services-grid > div')).toHaveCount(5);
-    await expect(baseline.locator('#gallery-grid > div')).toHaveCount(10);
+    await expect(baseline.locator('#services-grid > .service-public-card')).toHaveCount(5);
+    await expect(baseline.locator('#gallery-grid > button')).toHaveCount(10);
     await expect(baseline.locator('.hero-reveal')).toHaveCSS('opacity', '1');
     await expect(baseline.locator('#business-license')).toBeHidden();
   });
@@ -117,6 +117,7 @@ try {
       await expect(page.locator('#editor')).toBeVisible();
       await expect(page.locator('#main-photos .photo-card')).toHaveCount(1);
       await expect(page.locator('#services-list .service-admin-card')).toHaveCount(5);
+      await expect(page.locator('#services-list .service-summary-count').first()).toHaveText('1 photo');
       await expect(page.locator('#gallery-photos .photo-card')).toHaveCount(10);
       await expect(page.locator('#featured-photos .photo-card')).toHaveCount(1);
       expect(await page.locator('#main-photos img').first().getAttribute('src')).toBe(state.content.hero);
@@ -192,15 +193,39 @@ try {
     await newServiceCard.locator('.service-name-input').fill('Outdoor Kitchens');
     await newServiceCard.locator('.service-description-input').fill('Custom outdoor kitchens for Arizona evenings.');
     chooser = page.waitForEvent('filechooser');
-    await newServiceCard.locator('.service-photo-button').click();
-    await (await chooser).setFiles(photo);
-    await expect(page.locator('#editor-status')).toContainText('Photo ready');
+    await newServiceCard.locator('.add-service-photos').click();
+    await (await chooser).setFiles([
+      photo,
+      { ...photo, name: 'service-middle.png' },
+      { ...photo, name: 'service-cover.png' }
+    ]);
+    await expect(page.locator('#editor-status')).toContainText('3 photos ready');
+    await expect(newServiceCard.locator('.service-photo-card')).toHaveCount(3);
+    await newServiceCard.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: `generated-artifacts/browser/service-album-${name}.png` });
+    const middlePhotoId = await newServiceCard.locator('.service-photo-card').nth(1).getAttribute('data-service-photo-id');
+    const firstPhotoId = await newServiceCard.locator('.service-photo-card').first().getAttribute('data-service-photo-id');
+    await newServiceCard.locator('.service-photo-caption').first().fill('A finished outdoor kitchen');
+    await newServiceCard.locator('.service-photo-card').nth(2).locator('.service-photo-actions button').first().click();
+    await expect(newServiceCard.locator('.service-photo-card').nth(2).locator('.service-photo-cover-badge')).toHaveText('Cover photo');
+    if (name === 'desktop') {
+      await newServiceCard.locator('.service-photo-card').first().locator('.service-photo-drag-handle')
+        .dragTo(newServiceCard.locator('.service-photo-card').nth(2));
+      await expect(newServiceCard.locator('.service-photo-card').nth(2)).toHaveAttribute('data-service-photo-id', firstPhotoId);
+    } else {
+      await newServiceCard.getByRole('button', { name: 'Move Outdoor Kitchens photo 3 earlier' }).click();
+      await expect(newServiceCard.locator('.service-photo-card')).toHaveCount(3);
+    }
+    page.once('dialog', dialog => dialog.accept());
+    await newServiceCard.locator(`[data-service-photo-id="${middlePhotoId}"]`).getByRole('button', { name: /Remove Outdoor Kitchens photo/ }).click();
+    await expect(newServiceCard.locator('.service-photo-card')).toHaveCount(2);
     for (let move = 0; move < 2; move++) {
       await page.locator(`[data-service-id="${newServiceId}"]`).getByRole('button', { name: 'Move Outdoor Kitchens earlier' }).click();
     }
     await expect(page.locator('#services-list .service-admin-card').nth(3)).toHaveAttribute('data-service-id', newServiceId);
+    await page.locator('[data-service-id="service-4"] .service-edit-toggle').click();
     page.once('dialog', dialog => dialog.accept());
-    await page.locator('[data-service-id="service-4"]').getByRole('button', { name: 'Remove Irrigation service' }).click();
+    await page.locator('[data-service-id="service-4"]').getByRole('button', { name: 'Delete Irrigation' }).click();
     await expect(page.locator('#services-list .service-admin-card')).toHaveCount(5);
 
     await page.locator('#save').click();
@@ -216,13 +241,28 @@ try {
         'Pavers', 'Artificial Turf', 'Gravel', 'Outdoor Kitchens', 'Custom Designs'
       ]);
       expect(state.content.services[3].description).toBe('Custom outdoor kitchens for Arizona evenings.');
+      expect(state.content.services[3].photos).toHaveLength(2);
+      expect(state.content.services[3].photos.some(photo => photo.caption === 'A finished outdoor kitchen')).toBe(true);
+      expect(state.content.services[3].coverPhotoId).toBe(state.content.services[3].photos.find(photo => photo.url === state.content.services[3].image)?.id);
       expect(state.content.services[3].image).toContain('site-photos');
     });
     await page.goto(baseURL);
     await check(`${name}: public page reflects the saved content`, async () => {
-      await expect(page.locator('#gallery-grid > div')).toHaveCount(12);
-      await expect(page.locator('#services-grid > div')).toHaveCount(5);
+      await expect(page.locator('#gallery-grid > button')).toHaveCount(12);
+      await expect(page.locator('#services-grid > .service-public-card')).toHaveCount(5);
       await expect(page.locator('#services-grid h4').nth(3)).toHaveText('Outdoor Kitchens');
+      await page.locator('#services-grid .service-public-card').nth(3).getByRole('button', { name: /View 2 project photos/ }).click();
+      await expect(page.locator('#service-gallery-dialog')).toBeVisible();
+      await expect(page.locator('#service-gallery-grid .service-gallery-photo')).toHaveCount(2);
+      await page.locator('#service-gallery-grid .service-gallery-photo').first().click();
+      await expect(page.locator('#lightbox')).toBeVisible();
+      await expect(page.locator('#lightbox-count')).toHaveText('1 of 2');
+      await page.keyboard.press('ArrowRight');
+      await expect(page.locator('#lightbox-count')).toHaveText('2 of 2');
+      await page.locator('#lightbox-close').click();
+      await expect(page.locator('#service-gallery-dialog')).toBeVisible();
+      await page.locator('#close-service-gallery').click();
+      await expect(page.locator('#service-gallery-dialog')).toBeHidden();
       await expect(page.locator('#homepage-cover')).toHaveAttribute('src', state.content.hero);
       await expect(page.locator('#featured-project-photo')).toHaveAttribute('src', state.content.featured);
       await expect(page.locator('#license-number')).toHaveText('ROC 001234');
@@ -255,10 +295,17 @@ try {
       await expect(page.locator('#login-status')).toContainText('does not have edit access');
       await expect(page.locator('#editor')).toBeHidden();
     });
-    state.content = { ...state.content, hero: null, featured: null, services: state.content.services.map(service => ({ ...service, image: null })), gallery: [], license: { businessName: '', number: '', verificationUrl: '' } };
+    state.content = {
+      ...state.content,
+      hero: null,
+      featured: null,
+      services: state.content.services.map(service => ({ ...service, image: null, photos: [], coverPhotoId: null })),
+      gallery: [],
+      license: { businessName: '', number: '', verificationUrl: '' }
+    };
     await page.goto(baseURL);
     await check(`${name}: deleting all photos leaves no empty image areas`, async () => {
-      await expect(page.locator('#services-grid > div')).toHaveCount(5);
+      await expect(page.locator('#services-grid > .service-public-card')).toHaveCount(5);
       await expect(page.locator('#services-grid img')).toHaveCount(0);
       await expect(page.locator('#gallery')).toBeHidden();
       await expect(page.locator('#homepage-cover')).toHaveCount(0);

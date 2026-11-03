@@ -1,9 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
-import { MAX_SERVICES, MAX_SERVICE_TITLE_LENGTH, MAX_SERVICE_DESCRIPTION_LENGTH, SERVICE_ICONS, initialServiceArea, normalizeServices, validateServices, validateLicense, validateServiceArea, movePhoto, moveService, removePhoto } from '../shared/content.mjs';
+import { MAX_SERVICES, MAX_SERVICE_TITLE_LENGTH, MAX_SERVICE_DESCRIPTION_LENGTH, MAX_SERVICE_PHOTOS, MAX_SERVICE_PHOTO_CAPTION_LENGTH, SERVICE_ICONS, initialServiceArea, normalizeServices, validateServices, validateLicense, validateServiceArea, movePhoto, moveService, moveServicePhoto, setServiceCover, removeServicePhoto, removePhoto } from '../shared/content.mjs';
 import { optimizePhoto } from './photos.js';
 
 const $ = id => document.getElementById(id);
-let client, user, content, savedContent, version, selected, uploadTarget, draggedId, originalServices = [];
+let client, user, content, savedContent, version, selected, uploadTarget, draggedId, draggedServiceId, expandedServices = new Set(), originalServices = [];
 let busy = false, dirty = false, authGeneration = 0, recoveryMode = false;
 let isOwner = false, openingSessionId = null, passwordFlow = null;
 const clone = value => JSON.parse(JSON.stringify(value));
@@ -263,16 +263,24 @@ $('logout').addEventListener('click', async () => {
   else { $('login-form').reset(); message('login-status', 'You are logged out.'); }
 });
 
-function photoUrl(section, key) {
+function photoUrl(section, key, photoId = null) {
   if (section === 'gallery') return content.gallery.find(photo => photo.id === key)?.url;
   if (section === 'services') return content.services.find(service => service.id === key)?.image;
+  if (section === 'service-photos') return content.services.find(service => service.id === key)?.photos.find(photo => photo.id === photoId)?.url;
   return content[section];
 }
-function setPhoto(section, key, url) {
+function setPhoto(section, key, url, photoId = null) {
   if (section === 'gallery') content.gallery.find(photo => photo.id === key).url = url;
   else if (section === 'services') {
     const service = content.services.find(item => item.id === key);
     if (service) service.image = url;
+  } else if (section === 'service-photos') {
+    const service = content.services.find(item => item.id === key);
+    const photo = service?.photos.find(item => item.id === photoId);
+    if (photo) {
+      photo.url = url;
+      if (service.coverPhotoId === photo.id) service.image = url;
+    }
   }
   else content[section] = url;
 }
@@ -342,19 +350,93 @@ function serviceAdminCard(service, index) {
   const card = document.createElement('article');
   card.className = 'service-admin-card';
   card.dataset.serviceId = service.id;
+  const expanded = expandedServices.has(service.id);
+  const label = service.title.trim() || `Service ${index + 1}`;
+  const summary = document.createElement('div');
+  summary.className = 'service-card-summary';
 
-  const heading = document.createElement('div');
-  heading.className = 'service-admin-heading';
-  const position = document.createElement('h3');
-  position.textContent = `Service ${index + 1}`;
-  heading.append(position);
+  const summaryButton = button('', () => toggleEditor(), `Edit ${label}`);
+  summaryButton.className = 'service-summary-button';
+  summaryButton.setAttribute('aria-expanded', String(expanded));
+  summaryButton.setAttribute('aria-controls', `service-editor-${service.id}`);
+  const cover = document.createElement('span');
+  cover.className = 'service-summary-cover';
+  if (service.image) {
+    const image = new Image();
+    image.src = service.image; image.alt = ''; image.loading = 'lazy';
+    cover.append(image);
+  } else {
+    cover.textContent = 'Add cover';
+    cover.classList.add('service-summary-cover-empty');
+  }
+  const summaryText = document.createElement('span');
+  summaryText.className = 'service-summary-text';
+  const name = document.createElement('strong');
+  name.className = 'service-summary-name';
+  name.textContent = label;
+  const count = document.createElement('span');
+  count.className = 'service-summary-count';
+  count.textContent = `${service.photos.length} ${service.photos.length === 1 ? 'photo' : 'photos'}`;
+  summaryText.append(name, count);
+  summaryButton.append(cover, summaryText);
+
+  const summaryActions = document.createElement('div');
+  summaryActions.className = 'service-summary-actions';
+  const editButton = button(expanded ? 'Close' : 'Edit', toggleEditor, `${expanded ? 'Close' : 'Edit'} ${label}`);
+  editButton.className = 'service-edit-toggle';
+  const moveEarlier = button('↑', () => move(-1), `Move ${label} earlier`);
+  const moveLater = button('↓', () => move(1), `Move ${label} later`);
+  moveEarlier.className = moveLater.className = 'service-move-button';
+  moveEarlier.disabled = index === 0;
+  moveLater.disabled = index === content.services.length - 1;
+  summaryActions.append(moveEarlier, moveLater, editButton);
+  summary.append(summaryButton, summaryActions);
+
+  const dragHandle = document.createElement('span');
+  dragHandle.className = 'service-drag-handle';
+  dragHandle.textContent = '⠿';
+  dragHandle.title = 'Drag to reorder services';
+  dragHandle.setAttribute('aria-hidden', 'true');
+  dragHandle.draggable = true;
+  dragHandle.addEventListener('dragstart', event => {
+    if (busy) { event.preventDefault(); return; }
+    draggedServiceId = service.id;
+    event.dataTransfer.setData('text/plain', service.id);
+    event.dataTransfer.effectAllowed = 'move';
+    card.classList.add('dragging');
+  });
+  dragHandle.addEventListener('dragend', () => { draggedServiceId = null; card.classList.remove('dragging', 'drop-target'); });
+  card.addEventListener('dragover', event => {
+    if (!busy && draggedServiceId && draggedServiceId !== service.id) { event.preventDefault(); card.classList.add('drop-target'); }
+  });
+  card.addEventListener('dragleave', event => {
+    if (!card.contains(event.relatedTarget)) card.classList.remove('drop-target');
+  });
+  card.addEventListener('drop', event => {
+    event.preventDefault();
+    card.classList.remove('drop-target');
+    if (busy || !draggedServiceId || draggedServiceId === service.id) return;
+    const from = content.services.findIndex(item => item.id === draggedServiceId);
+    const to = content.services.findIndex(item => item.id === service.id);
+    if (from < 0 || to < 0) return;
+    content.services.splice(to, 0, content.services.splice(from, 1)[0]);
+    draggedServiceId = null;
+    renderServices(); markDirty();
+    message('editor-status', 'Service order updated. Save Changes to publish it.');
+  });
+  summary.prepend(dragHandle);
+
+  const editor = document.createElement('div');
+  editor.id = `service-editor-${service.id}`;
+  editor.className = 'service-card-editor';
+  editor.hidden = !expanded;
 
   const nameField = document.createElement('div');
   nameField.className = 'field-group';
   const nameId = `service-name-${service.id}`;
   const nameLabel = document.createElement('label');
   nameLabel.htmlFor = nameId;
-  nameLabel.textContent = 'Service name';
+  nameLabel.textContent = 'Service Name';
   const nameInput = document.createElement('input');
   nameInput.id = nameId;
   nameInput.className = 'service-name-input';
@@ -363,87 +445,218 @@ function serviceAdminCard(service, index) {
   nameInput.required = true;
   nameInput.placeholder = 'For example, Patio Pavers';
   nameInput.value = service.title;
-  nameInput.setAttribute('aria-label', `Service ${index + 1} name`);
-  let moveEarlier, moveLater, remove, photoButton;
-  const updateActionLabels = () => {
-    const label = service.title.trim() || `service ${index + 1}`;
-    moveEarlier?.setAttribute('aria-label', `Move ${label} earlier`);
-    moveLater?.setAttribute('aria-label', `Move ${label} later`);
-    remove?.setAttribute('aria-label', `Remove ${label} service`);
-    photoButton?.setAttribute('aria-label', `${photoUrl('services', service.id) ? 'Replace' : 'Add'} photo for ${label}`);
-  };
   nameInput.addEventListener('input', () => {
     service.title = nameInput.value;
-    position.textContent = service.title.trim() || `Service ${index + 1}`;
-    updateActionLabels();
+    name.textContent = service.title.trim() || `Service ${index + 1}`;
+    summaryButton.setAttribute('aria-label', `Edit ${name.textContent}`);
+    editButton.setAttribute('aria-label', `Edit ${name.textContent}`);
     markDirty();
   });
   nameField.append(nameLabel, nameInput);
 
   const descriptionField = document.createElement('div');
-  descriptionField.className = 'field-group';
+  descriptionField.className = 'field-group service-description-field';
   const descriptionId = `service-description-${service.id}`;
   const descriptionLabel = document.createElement('label');
   descriptionLabel.htmlFor = descriptionId;
-  descriptionLabel.textContent = 'Description';
+  descriptionLabel.textContent = 'What We Do';
   const descriptionInput = document.createElement('textarea');
   descriptionInput.id = descriptionId;
   descriptionInput.className = 'service-description-input';
   descriptionInput.rows = 3;
   descriptionInput.maxLength = MAX_SERVICE_DESCRIPTION_LENGTH;
   descriptionInput.required = true;
-  descriptionInput.placeholder = 'Describe this service for customers';
+  descriptionInput.placeholder = 'Describe this service in a few sentences';
   descriptionInput.value = service.description;
-  descriptionInput.setAttribute('aria-label', `Service ${index + 1} description`);
-  descriptionInput.addEventListener('input', () => { service.description = descriptionInput.value; markDirty(); });
+  descriptionInput.addEventListener('input', () => {
+    service.description = descriptionInput.value;
+    descriptionInput.style.height = 'auto';
+    descriptionInput.style.height = `${descriptionInput.scrollHeight}px`;
+    markDirty();
+  });
   descriptionField.append(descriptionLabel, descriptionInput);
+  requestAnimationFrame(() => {
+    descriptionInput.style.height = 'auto';
+    descriptionInput.style.height = `${descriptionInput.scrollHeight}px`;
+  });
 
-  const photo = photoUrl('services', service.id);
-  photoButton = button(photo ? '' : '＋ Add photo', () => {
-    const label = `${service.title.trim() || `Service ${index + 1}`} photo`;
-    if (photoUrl('services', service.id)) openPhoto('services', service.id, label);
-    else chooseUpload({ section: 'services', key: service.id });
-  }, `${photo ? 'Replace' : 'Add'} photo for ${service.title.trim() || `service ${index + 1}`}`);
-  photoButton.className = 'service-photo-button';
-  if (photo) {
-    const image = new Image();
-    image.src = photo;
-    image.alt = '';
-    image.loading = 'lazy';
-    const overlay = document.createElement('span');
-    overlay.className = 'service-photo-overlay';
-    overlay.textContent = 'Tap to replace photo';
-    photoButton.append(image, overlay);
-  } else {
-    photoButton.classList.add('empty-photo');
+  const album = document.createElement('section');
+  album.className = 'service-album';
+  album.setAttribute('aria-labelledby', `service-album-title-${service.id}`);
+  const albumHeading = document.createElement('div');
+  albumHeading.className = 'service-album-heading';
+  const albumTitle = document.createElement('div');
+  const albumTitleText = document.createElement('h4');
+  albumTitleText.id = `service-album-title-${service.id}`;
+  albumTitleText.textContent = 'Project photos';
+  const albumHint = document.createElement('p');
+  albumHint.textContent = 'Choose a cover, add captions, or change the order.';
+  albumTitle.append(albumTitleText, albumHint);
+  const addPhotos = button('＋ Add Photos', () => chooseUpload({ section: 'service-photos', key: service.id }), `Add photos to ${label}`);
+  addPhotos.className = 'button button-secondary add-service-photos';
+  addPhotos.disabled = service.photos.length >= MAX_SERVICE_PHOTOS || busy;
+  albumHeading.append(albumTitle, addPhotos);
+  const uploadFeedback = document.createElement('div');
+  uploadFeedback.className = 'service-upload-feedback';
+  uploadFeedback.hidden = true;
+  const uploadProgress = document.createElement('progress');
+  uploadProgress.max = 100; uploadProgress.value = 0; uploadProgress.setAttribute('aria-label', `Uploading photos for ${label}`);
+  const uploadStatus = document.createElement('span');
+  uploadStatus.setAttribute('role', 'status');
+  uploadFeedback.append(uploadProgress, uploadStatus);
+  const albumGrid = document.createElement('div');
+  albumGrid.className = 'service-photo-grid';
+  albumGrid.setAttribute('aria-label', `${label} project photos`);
+  albumGrid.append(...service.photos.map((photo, photoIndex) => servicePhotoCard(service, photo, photoIndex, index)));
+  if (!service.photos.length) {
+    const empty = document.createElement('p');
+    empty.className = 'service-album-empty';
+    empty.textContent = 'No project photos yet. Add a few photos to help customers picture your work.';
+    albumGrid.append(empty);
   }
+  album.append(albumHeading, uploadFeedback, albumGrid);
 
   const actions = document.createElement('div');
-  actions.className = 'service-admin-actions';
-  moveEarlier = button('Move up', () => move(-1), `Move ${service.title.trim() || `service ${index + 1}`} earlier`);
-  moveLater = button('Move down', () => move(1), `Move ${service.title.trim() || `service ${index + 1}`} later`);
-  remove = button('Remove service', () => {
-    if (busy || !confirm(`Remove ${service.title.trim() || 'this service'} from the website? It will only change after you save.`)) return;
+  actions.className = 'service-editor-actions';
+  const cancel = button('Cancel', () => cancelService(service.id), `Cancel edits to ${label}`);
+  cancel.className = 'button button-quiet';
+  const remove = button('Delete service', () => {
+    if (busy || !confirm(`Remove ${label} and its photos from the website? The uploaded photo files will remain safely stored.`)) return;
     content.services = content.services.filter(item => item.id !== service.id);
+    expandedServices.delete(service.id);
     renderServices(); markDirty();
-    message('editor-status', 'Service removed. Save Changes to publish it.');
-  }, `Remove ${service.title.trim() || `service ${index + 1}`} service`);
-  remove.classList.add('service-remove-button');
-  moveEarlier.disabled = index === 0;
-  moveLater.disabled = index === content.services.length - 1;
-  updateActionLabels();
-  actions.append(moveEarlier, moveLater, remove);
+    message('editor-status', 'Service removed from your draft. Save Changes to publish it.');
+  }, `Delete ${label}`);
+  remove.className = 'button button-danger';
+  actions.append(cancel, remove);
 
+  editor.append(nameField, descriptionField, album, actions);
+  card.append(summary, editor);
+  return card;
+
+  function toggleEditor() {
+    if (expandedServices.has(service.id)) expandedServices.delete(service.id);
+    else expandedServices.add(service.id);
+    renderServices();
+    if (expandedServices.has(service.id)) {
+      document.querySelector(`#service-editor-${service.id} .service-name-input`)?.focus();
+    }
+  }
   function move(direction) {
     if (busy || !moveService(content.services, service.id, direction)) return;
     renderServices(); markDirty();
-    document.querySelector(`[data-service-id="${service.id}"] .service-name-input`)?.focus();
+    document.querySelector(`[data-service-id="${service.id}"] .service-summary-button`)?.focus();
     message('editor-status', 'Service order updated. Save Changes to publish it.');
   }
-
-  card.append(heading, photoButton, nameField, descriptionField, actions);
-  return card;
 }
+
+function servicePhotoCard(service, photo, photoIndex, serviceIndex) {
+  const card = document.createElement('article');
+  card.className = 'service-photo-card';
+  card.dataset.servicePhotoId = photo.id;
+  const imageButton = button('', () => openPhoto('service-photos', service.id, `${service.title || `Service ${serviceIndex + 1}`} photo ${photoIndex + 1}`, photo.id), `View full-size ${service.title} photo ${photoIndex + 1}`);
+  imageButton.className = 'service-photo-thumbnail';
+  const image = new Image();
+  image.src = photo.url; image.alt = photo.caption || `${service.title} project photo ${photoIndex + 1}`; image.loading = 'lazy';
+  imageButton.append(image);
+  const coverBadge = document.createElement('span');
+  coverBadge.className = 'service-photo-cover-badge';
+  coverBadge.textContent = service.coverPhotoId === photo.id ? 'Cover photo' : '';
+  imageButton.append(coverBadge);
+
+  const captionLabel = document.createElement('label');
+  captionLabel.className = 'visually-hidden';
+  captionLabel.htmlFor = `service-caption-${service.id}-${photo.id}`;
+  captionLabel.textContent = `Caption for ${service.title} photo ${photoIndex + 1}`;
+  const caption = document.createElement('input');
+  caption.id = captionLabel.htmlFor;
+  caption.className = 'service-photo-caption';
+  caption.type = 'text';
+  caption.maxLength = MAX_SERVICE_PHOTO_CAPTION_LENGTH;
+  caption.placeholder = 'Add a short caption';
+  caption.value = photo.caption;
+  caption.addEventListener('input', () => { photo.caption = caption.value; markDirty(); });
+
+  const actions = document.createElement('div');
+  actions.className = 'service-photo-actions';
+  const cover = button(service.coverPhotoId === photo.id ? 'Cover' : 'Set cover', () => {
+    if (busy || !setServiceCover(service, photo.id)) return;
+    renderServices(); markDirty();
+    message('editor-status', 'Cover photo selected. Save Changes to publish it.');
+  }, `${service.coverPhotoId === photo.id ? 'Current cover photo' : `Use ${service.title} photo ${photoIndex + 1} as cover`}`);
+  cover.disabled = service.coverPhotoId === photo.id;
+  const earlier = button('←', () => move(-1), `Move ${service.title} photo ${photoIndex + 1} earlier`);
+  const later = button('→', () => move(1), `Move ${service.title} photo ${photoIndex + 1} later`);
+  earlier.disabled = photoIndex === 0;
+  later.disabled = photoIndex === service.photos.length - 1;
+  actions.append(cover, earlier, later);
+  const remove = button('Remove photo', () => {
+    if (busy || !confirm(`Remove this photo from ${service.title}? The uploaded file will remain safely stored.`)) return;
+    removeServicePhoto(service, photo.id);
+    renderServices(); markDirty();
+    message('editor-status', 'Photo removed from this service. Save Changes to publish it.');
+  }, `Remove ${service.title} photo ${photoIndex + 1}`);
+  remove.className = 'service-photo-remove';
+  actions.append(remove);
+
+  const dragHandle = document.createElement('span');
+  dragHandle.className = 'service-photo-drag-handle';
+  dragHandle.textContent = '⠿';
+  dragHandle.title = 'Drag to reorder photos';
+  dragHandle.setAttribute('aria-hidden', 'true');
+  dragHandle.draggable = true;
+  dragHandle.addEventListener('dragstart', event => {
+    if (busy) { event.preventDefault(); return; }
+    draggedId = `${service.id}:${photo.id}`;
+    event.dataTransfer.setData('text/plain', draggedId);
+    event.dataTransfer.effectAllowed = 'move';
+    card.classList.add('dragging');
+  });
+  dragHandle.addEventListener('dragend', () => { draggedId = null; card.classList.remove('dragging', 'drop-target'); });
+  card.addEventListener('dragover', event => {
+    if (!busy && draggedId && draggedId !== `${service.id}:${photo.id}`) { event.preventDefault(); card.classList.add('drop-target'); }
+  });
+  card.addEventListener('dragleave', event => {
+    if (!card.contains(event.relatedTarget)) card.classList.remove('drop-target');
+  });
+  card.addEventListener('drop', event => {
+    event.preventDefault();
+    card.classList.remove('drop-target');
+    if (busy || !draggedId) return;
+    const [fromServiceId, fromPhotoId] = draggedId.split(':');
+    if (fromServiceId !== service.id || fromPhotoId === photo.id) return;
+    const from = service.photos.findIndex(item => item.id === fromPhotoId);
+    const to = service.photos.findIndex(item => item.id === photo.id);
+    if (from < 0 || to < 0) return;
+    service.photos.splice(to, 0, service.photos.splice(from, 1)[0]);
+    draggedId = null; renderServices(); markDirty();
+    message('editor-status', 'Photo order updated. Save Changes to publish it.');
+  });
+  card.prepend(dragHandle);
+  card.append(imageButton, captionLabel, caption, actions);
+  return card;
+
+  function move(direction) {
+    if (busy || !moveServicePhoto(service, photo.id, direction)) return;
+    renderServices(); markDirty();
+    document.querySelector(`[data-service-id="${service.id}"] [data-service-photo-id="${photo.id}"] .service-photo-caption`)?.focus();
+    message('editor-status', 'Photo order updated. Save Changes to publish it.');
+  }
+}
+
+function cancelService(serviceId) {
+  if (busy || !content) return;
+  const saved = savedContent.services.find(service => service.id === serviceId);
+  if (!saved) content.services = content.services.filter(service => service.id !== serviceId);
+  else {
+    const index = content.services.findIndex(service => service.id === serviceId);
+    if (index >= 0) content.services[index] = clone(saved);
+  }
+  expandedServices.delete(serviceId);
+  renderServices(); markDirty();
+  message('editor-status', 'Edits to this service were canceled. Other changes are still saved as a draft.');
+}
+
 function renderServices() {
   $('services-list').replaceChildren(...content.services.map(serviceAdminCard));
   if (!content.services.length) {
@@ -466,8 +679,9 @@ function render() {
 }
  $('add-service').addEventListener('click', () => {
   if (busy || content.services.length >= MAX_SERVICES) return;
-  const service = { id: crypto.randomUUID(), title: '', description: '', icon: SERVICE_ICONS[0], image: null };
+  const service = { id: crypto.randomUUID(), title: '', description: '', icon: SERVICE_ICONS[0], image: null, photos: [], coverPhotoId: null };
   content.services.push(service);
+  expandedServices.add(service.id);
   renderServices(); markDirty();
   document.querySelector(`[data-service-id="${service.id}"] .service-name-input`)?.focus();
   message('editor-status', 'New service added. Add its name and description, then save your changes.');
@@ -497,24 +711,32 @@ $('service-area-form').addEventListener('input', () => {
   };
   markDirty();
 });
-function openPhoto(section, key, label) {
+function openPhoto(section, key, label, photoId = null) {
   if (busy) return;
-  selected = { section, key, label };
+  selected = { section, key, label, photoId };
   $('photo-dialog-title').textContent = label;
-  $('selected-photo').src = photoUrl(section, key);
+  $('selected-photo').src = photoUrl(section, key, photoId);
   $('selected-photo').alt = label;
+  $('selected-photo-caption').textContent = section === 'service-photos'
+    ? (content.services.find(service => service.id === key)?.photos.find(photo => photo.id === photoId)?.caption || '')
+    : '';
+  $('selected-photo-caption').hidden = !$('selected-photo-caption').textContent;
   $('use-cover').hidden = section === 'hero';
   $('use-featured').hidden = section === 'featured';
+  $('use-service-cover').hidden = section !== 'service-photos';
   $('photo-dialog').showModal();
 }
 $('close-photo-dialog').addEventListener('click', () => { if (!busy) $('photo-dialog').close(); });
 $('photo-dialog').addEventListener('cancel', event => { if (busy) event.preventDefault(); });
 $('replace-photo').addEventListener('click', () => chooseUpload(selected));
 $('delete-photo').addEventListener('click', () => {
-  if (!confirm('Remove this photo from this section? Your website changes only when you tap Save Changes.')) return;
-  removePhoto(content, selected.section, selected.key);
+  if (!confirm('Remove this photo from the website? The uploaded file will remain safely stored until your changes are saved.')) return;
+  if (selected.section === 'service-photos') {
+    const service = content.services.find(item => item.id === selected.key);
+    if (service) removeServicePhoto(service, selected.photoId);
+  } else removePhoto(content, selected.section, selected.key);
   $('photo-dialog').close(); render(); markDirty();
-  message('editor-status', 'Photo removed. Save Changes to publish.');
+  message('editor-status', 'Photo removed from your draft. Save Changes to publish.');
 });
 for (const [id, slot] of [['use-cover', 'hero'], ['use-featured', 'featured']]) {
   $(id).addEventListener('click', () => {
@@ -523,10 +745,17 @@ for (const [id, slot] of [['use-cover', 'hero'], ['use-featured', 'featured']]) 
     message('editor-status', `${slot === 'hero' ? 'Homepage cover' : 'Featured project'} selected. Save Changes to publish.`);
   });
 }
+ $('use-service-cover').addEventListener('click', () => {
+  const service = content.services.find(item => item.id === selected.key);
+  if (!service || !setServiceCover(service, selected.photoId)) return;
+  $('photo-dialog').close(); renderServices(); markDirty();
+  message('editor-status', 'Cover photo selected. Save Changes to publish.');
+});
 function chooseUpload(target) {
   if (busy) return;
   uploadTarget = target;
-  $('photo-upload').multiple = target.section === 'add-gallery';
+  $('photo-upload').multiple = target.section === 'add-gallery' ||
+    (target.section === 'service-photos' && !target.photoId);
   $('photo-upload').value = '';
   $('photo-upload').click();
 }
@@ -535,12 +764,30 @@ $('photo-upload').addEventListener('change', async () => {
   if (!$('photo-upload').files.length) return;
   const target = { ...uploadTarget };
   const files = [...$('photo-upload').files];
+  const service = target.section === 'service-photos'
+    ? content.services.find(item => item.id === target.key)
+    : null;
+  if (target.section === 'service-photos' && !service) return;
+  if (target.section === 'service-photos' && !target.photoId &&
+    service.photos.length + files.length > MAX_SERVICE_PHOTOS) {
+    message('editor-status', `Each service can have up to ${MAX_SERVICE_PHOTOS} project photos.`);
+    return;
+  }
+  const serviceCard = service
+    ? document.querySelector(`[data-service-id="${service.id}"]`)
+    : null;
+  const progressBox = serviceCard?.querySelector('.service-upload-feedback');
+  const progress = progressBox?.querySelector('progress');
+  const progressText = progressBox?.querySelector('[role="status"]');
+  if (progressBox) progressBox.hidden = false;
   setBusy(true);
   let uploaded = 0;
   try {
     for (const file of files) {
       if (target.section === 'add-gallery' && content.gallery.length >= 80) throw new Error('Your gallery can hold up to 80 photos.');
-      message('editor-status', `Preparing photo ${uploaded + 1} of ${files.length}…`);
+      if (progress) progress.value = Math.round(uploaded / files.length * 100);
+      if (progressText) progressText.textContent = `Preparing photo ${uploaded + 1} of ${files.length}…`;
+      else message('editor-status', `Preparing photo ${uploaded + 1} of ${files.length}…`);
       const blob = await optimizePhoto(file);
       if (!user || !content) throw new Error('Please sign in again before uploading.');
       const filePath = `${user.id}/${crypto.randomUUID()}.webp`;
@@ -550,16 +797,22 @@ $('photo-upload').addEventListener('change', async () => {
       const { data } = client.storage.from('site-photos').getPublicUrl(filePath);
       if (target.section === 'add-gallery') {
         content.gallery.push({ id: crypto.randomUUID(), url: data.publicUrl, title: 'Greatview Hardscape project' });
-      } else setPhoto(target.section, target.key, data.publicUrl);
+      } else if (target.section === 'service-photos' && !target.photoId) {
+        const photo = { id: crypto.randomUUID(), url: data.publicUrl, caption: '' };
+        service.photos.push(photo);
+        if (!service.coverPhotoId) setServiceCover(service, photo.id);
+      } else setPhoto(target.section, target.key, data.publicUrl, target.photoId);
       uploaded++;
+      if (progress) progress.value = Math.round(uploaded / files.length * 100);
+      if (progressText) progressText.textContent = `${uploaded} of ${files.length} photos added`;
     }
     message('editor-status', `${uploaded === 1 ? 'Photo ready' : `${uploaded} photos ready`}. Tap Save Changes to show ${uploaded === 1 ? 'it' : 'them'} on your website.`);
   } catch (error) {
     message('editor-status', `${uploaded ? `${uploaded} photo(s) ready to save. ` : ''}${error.message}`, true);
   } finally {
     $('photo-dialog').close();
-    if (content) { render(); markDirty(); }
     setBusy(false);
+    if (content) { render(); markDirty(); }
   }
 });
 $('discard').addEventListener('click', () => {
