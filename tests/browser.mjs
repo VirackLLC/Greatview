@@ -16,6 +16,8 @@ async function signIn(page, emailAddress = 'owner@example.invalid') {
 }
 try {
   const baseline = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  await baseline.route('**/api/config', route => route.fulfill({ status: 503, json: { error: 'Test setup not configured' } }));
+  await baseline.route('**/api/content', route => route.fulfill({ status: 503, json: { error: 'Test uses the original public content' } }));
   await baseline.goto(`${baseURL}/admin`);
   await check('unconfigured admin is locked', async () => {
     await expect(baseline.locator('#setup-panel')).toBeVisible();
@@ -48,7 +50,7 @@ try {
     const failures = [];
     page.on('pageerror', error => failures.push(error.message));
     const role = name === 'desktop' ? 'editor' : 'owner';
-    const state = await installOwnerMock(page, { role });
+    const state = await installOwnerMock(page, { role, legacyServices: name === 'mobile' });
     await page.goto(`${baseURL}/admin`);
     await page.locator('#email').fill(`${role}@example.invalid`);
     await page.locator('#request-password-reset').click();
@@ -113,7 +115,8 @@ try {
     await signIn(page, `${role}@example.invalid`);
     await check(`${name}: ${role} signs in and sees real existing photos`, async () => {
       await expect(page.locator('#editor')).toBeVisible();
-      await expect(page.locator('#main-photos .photo-card')).toHaveCount(6);
+      await expect(page.locator('#main-photos .photo-card')).toHaveCount(1);
+      await expect(page.locator('#services-list .service-admin-card')).toHaveCount(5);
       await expect(page.locator('#gallery-photos .photo-card')).toHaveCount(10);
       await expect(page.locator('#featured-photos .photo-card')).toHaveCount(1);
       expect(await page.locator('#main-photos img').first().getAttribute('src')).toBe(state.content.hero);
@@ -181,8 +184,27 @@ try {
     await page.locator('#verification-url').fill('https://azroc.my.site.com/AZRoc/s/contractor-search');
     await page.locator('#area-region').fill('East Valley');
     await page.locator('#area-cities').fill('Mesa\nTempe\nGilbert');
+
+    await page.locator('#add-service').click();
+    await expect(page.locator('#services-list .service-admin-card')).toHaveCount(6);
+    const newServiceCard = page.locator('#services-list .service-admin-card').last();
+    const newServiceId = await newServiceCard.getAttribute('data-service-id');
+    await newServiceCard.locator('.service-name-input').fill('Outdoor Kitchens');
+    await newServiceCard.locator('.service-description-input').fill('Custom outdoor kitchens for Arizona evenings.');
+    chooser = page.waitForEvent('filechooser');
+    await newServiceCard.locator('.service-photo-button').click();
+    await (await chooser).setFiles(photo);
+    await expect(page.locator('#editor-status')).toContainText('Photo ready');
+    for (let move = 0; move < 2; move++) {
+      await page.locator(`[data-service-id="${newServiceId}"]`).getByRole('button', { name: 'Move Outdoor Kitchens earlier' }).click();
+    }
+    await expect(page.locator('#services-list .service-admin-card').nth(3)).toHaveAttribute('data-service-id', newServiceId);
+    page.once('dialog', dialog => dialog.accept());
+    await page.locator('[data-service-id="service-4"]').getByRole('button', { name: 'Remove Irrigation service' }).click();
+    await expect(page.locator('#services-list .service-admin-card')).toHaveCount(5);
+
     await page.locator('#save').click();
-    await check(`${name}: Save publishes photos, service area, and license`, async () => {
+    await check(`${name}: Save publishes photos, services, service area, and license`, async () => {
       await expect(page.locator('#save-status')).toContainText('Saved!');
       expect(state.saves).toBe(1);
       expect(state.content.gallery.length).toBe(12);
@@ -190,10 +212,17 @@ try {
       expect(state.content.featured).toBe(state.content.hero);
       expect(state.content.license.number).toBe('001234');
       expect(state.content.serviceArea).toEqual({ region: 'East Valley', cities: ['Mesa', 'Tempe', 'Gilbert'] });
+      expect(state.content.services.map(service => service.title)).toEqual([
+        'Pavers', 'Artificial Turf', 'Gravel', 'Outdoor Kitchens', 'Custom Designs'
+      ]);
+      expect(state.content.services[3].description).toBe('Custom outdoor kitchens for Arizona evenings.');
+      expect(state.content.services[3].image).toContain('site-photos');
     });
     await page.goto(baseURL);
     await check(`${name}: public page reflects the saved content`, async () => {
       await expect(page.locator('#gallery-grid > div')).toHaveCount(12);
+      await expect(page.locator('#services-grid > div')).toHaveCount(5);
+      await expect(page.locator('#services-grid h4').nth(3)).toHaveText('Outdoor Kitchens');
       await expect(page.locator('#homepage-cover')).toHaveAttribute('src', state.content.hero);
       await expect(page.locator('#featured-project-photo')).toHaveAttribute('src', state.content.featured);
       await expect(page.locator('#license-number')).toHaveText('ROC 001234');
@@ -208,6 +237,11 @@ try {
         return rect.left >= 0 && rect.right <= innerWidth;
       })).toBe(true);
     });
+    await page.locator('header button').click();
+    await check(`${name}: quote form lists the currently published services`, async () => {
+      const options = await page.locator('#modal-quote-form select option').allTextContents();
+      expect(options).toEqual(['Pavers', 'Artificial Turf', 'Gravel', 'Outdoor Kitchens', 'Custom Designs']);
+    });
     await page.locator('#business-license').scrollIntoViewIfNeeded();
     await page.screenshot({ path: `generated-artifacts/browser/license-${name}.png` });
     await page.goto(`${baseURL}/admin`);
@@ -221,7 +255,7 @@ try {
       await expect(page.locator('#login-status')).toContainText('does not have edit access');
       await expect(page.locator('#editor')).toBeHidden();
     });
-    state.content = { ...state.content, hero: null, featured: null, services: [null, null, null, null, null], gallery: [], license: { businessName: '', number: '', verificationUrl: '' } };
+    state.content = { ...state.content, hero: null, featured: null, services: state.content.services.map(service => ({ ...service, image: null })), gallery: [], license: { businessName: '', number: '', verificationUrl: '' } };
     await page.goto(baseURL);
     await check(`${name}: deleting all photos leaves no empty image areas`, async () => {
       await expect(page.locator('#services-grid > div')).toHaveCount(5);

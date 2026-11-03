@@ -1,11 +1,36 @@
 const { Resend } = require('resend');
+const defaults = require('../data.json').services.map(service => service.title);
+const { getPublicConfig } = require('../server/public-config.cjs');
 
 const escapeHTML = value => value.replace(/[&<>"']/g, character => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
 }[character]));
 
-// Injecting the transport permits tests to exercise delivery without sending real email.
-function createQuoteHandler(getResend) {
+// Injectable providers let tests verify quote delivery without sending real email.
+async function getPublishedServiceNames() {
+  const config = getPublicConfig();
+  if (!config) {
+    if (process.env.SUPABASE_URL || process.env.SUPABASE_ANON_KEY) throw new Error('Published services are unavailable');
+    return defaults;
+  }
+  const response = await fetch(`${config.url.replace(/\/$/, '')}/rest/v1/site_content?id=eq.1&select=content`, {
+    headers: { apikey: config.key, Authorization: `Bearer ${config.key}` },
+    signal: AbortSignal.timeout(6000)
+  });
+  if (!response.ok) throw new Error('Published services are unavailable');
+  const rows = await response.json();
+  const services = rows[0]?.content?.services;
+  if (!Array.isArray(services)) throw new Error('Published services are unavailable');
+  if (services.length === defaults.length && services.every(service => service === null || typeof service === 'string')) {
+    return defaults;
+  }
+  if (!services.every(service => service && typeof service.title === 'string')) {
+    throw new Error('Published services are unavailable');
+  }
+  return services.map(service => service.title);
+}
+
+function createQuoteHandler(getResend, getServiceNames = getPublishedServiceNames) {
   return async function handler(req, res) {
     res.setHeader('Cache-Control', 'no-store');
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -17,9 +42,17 @@ function createQuoteHandler(getResend) {
       }
     }
     const { name, phone, email, service, message } = body;
-    if (!name.trim() || !phone.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ||
-      !['Pavers', 'Artificial Turf', 'Gravel', 'Irrigation', 'Custom Designs'].includes(service)) {
+    if (!name.trim() || !phone.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return res.status(400).json({ error: 'Please provide your name, phone, email, and service.' });
+    }
+    let allowedServices;
+    try {
+      allowedServices = await getServiceNames();
+    } catch {
+      return res.status(503).json({ error: 'The service list is temporarily unavailable. Please call us instead.' });
+    }
+    if (!allowedServices.includes(service)) {
+      return res.status(400).json({ error: 'Please choose a service from the list.' });
     }
     try {
       const result = await getResend().emails.send({
@@ -45,3 +78,4 @@ function createQuoteHandler(getResend) {
 }
 module.exports = createQuoteHandler(() => new Resend(process.env.RESEND_API_KEY));
 module.exports.createQuoteHandler = createQuoteHandler;
+module.exports.getPublishedServiceNames = getPublishedServiceNames;

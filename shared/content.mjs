@@ -1,4 +1,7 @@
-export const SERVICE_NAMES = ['Pavers', 'Artificial Turf', 'Gravel', 'Irrigation', 'Custom Designs'];
+export const MAX_SERVICES = 20;
+export const MAX_SERVICE_TITLE_LENGTH = 80;
+export const MAX_SERVICE_DESCRIPTION_LENGTH = 600;
+export const SERVICE_ICONS = Object.freeze(['grid', 'sprout', 'mountain', 'droplets', 'pen-tool']);
 export const ORIGINAL_HERO = 'https://res.cloudinary.com/dgxsmxiax/image/upload/v1774069471/7193972578042583984_dprn9i.jpg';
 export const ORIGINAL_FEATURED = 'https://res.cloudinary.com/dgxsmxiax/image/upload/v1774069465/5228158948893782823_lnqlq1.jpg';
 export const DEFAULT_SERVICE_AREA = Object.freeze({
@@ -17,11 +20,62 @@ export function initialContent(data) {
   return {
     hero: ORIGINAL_HERO,
     featured: ORIGINAL_FEATURED,
-    services: data.services.map(service => service.image),
+    services: normalizeServices(data.services, data.services),
     gallery: data.gallery.map((photo, i) => ({ id: `original-${i + 1}`, url: photo.url, title: photo.title.trim() })),
     serviceArea: initialServiceArea(data),
     license: { businessName: '', number: '', verificationUrl: '' }
   };
+}
+
+export function normalizeServices(services, defaults = []) {
+  if (!Array.isArray(services)) return [];
+  const legacyImages = services.length === defaults.length &&
+    services.every(image => image === null || typeof image === 'string');
+  if (legacyImages) {
+    return defaults.map((service, index) => ({
+      id: `service-${index + 1}`,
+      title: service.title,
+      description: service.description || '',
+      icon: SERVICE_ICONS.includes(service.icon) ? service.icon : 'grid',
+      image: services[index]
+    }));
+  }
+  return services.filter(service => service && typeof service === 'object' && !Array.isArray(service)).map((service, index) => ({
+    id: typeof service.id === 'string' ? service.id : `service-${index + 1}`,
+    title: typeof service.title === 'string' ? service.title : '',
+    description: typeof service.description === 'string' ? service.description : '',
+    icon: SERVICE_ICONS.includes(service.icon) ? service.icon : 'grid',
+    image: typeof service.image === 'string' ? service.image : null
+  }));
+}
+
+export function validateServices(services) {
+  if (!Array.isArray(services) || services.length > MAX_SERVICES) {
+    return `You can add up to ${MAX_SERVICES} services.`;
+  }
+  const ids = new Set();
+  for (const service of services) {
+    if (!service || typeof service !== 'object' || Array.isArray(service) ||
+      typeof service.id !== 'string' || !/^[a-zA-Z0-9-]{1,80}$/.test(service.id) ||
+      ids.has(service.id)) {
+      return 'Please check the service list and remove any duplicate services.';
+    }
+    ids.add(service.id);
+    if (typeof service.title !== 'string' || !service.title.trim() || service.title.length > MAX_SERVICE_TITLE_LENGTH) {
+      return `Enter a name for every service (up to ${MAX_SERVICE_TITLE_LENGTH} characters).`;
+    }
+    if (typeof service.description !== 'string' || !service.description.trim() ||
+      service.description.length > MAX_SERVICE_DESCRIPTION_LENGTH) {
+      return `Enter a short description for every service (up to ${MAX_SERVICE_DESCRIPTION_LENGTH} characters).`;
+    }
+    if (!SERVICE_ICONS.includes(service.icon)) return 'Please check the service details.';
+    if (service.image !== null && (typeof service.image !== 'string' || service.image.length > 1000 ||
+      !/^https:\/\/res\.cloudinary\.com\/dgxsmxiax\/image\/upload\/[A-Za-z0-9_./-]+$/.test(service.image) &&
+      !/^https:\/\/[a-z0-9-]+\.supabase\.co\/storage\/v1\/object\/public\/site-photos\/[a-f0-9-]{36}\/[a-f0-9-]{36}\.webp$/.test(service.image))) {
+      return 'Please choose a valid photo for each service.';
+    }
+  }
+  return '';
 }
 
 export function validateServiceArea(serviceArea) {
@@ -68,8 +122,15 @@ export function movePhoto(gallery, id, direction) {
   return true;
 }
 
+export function moveService(services, id, direction) {
+  return movePhoto(services, id, direction);
+}
+
 export function removePhoto(content, section, key) {
   if (section === 'gallery') content.gallery = content.gallery.filter(photo => photo.id !== key);
-  else if (section === 'services') content.services[key] = null;
+  else if (section === 'services') {
+    const service = content.services.find(item => item.id === key);
+    if (service) service.image = null;
+  }
   else content[section] = null;
 }
