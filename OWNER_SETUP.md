@@ -103,7 +103,7 @@ For the browser suite, install a Playwright-compatible Chromium on your test mac
 
 1. Visit **greatviewhardscape.com/admin**.
 2. At your first sign-in, replace the temporary password with a private password before the editing tools open. Later, use **Change password** in **Your access** or **Forgot your password?**.
-3. Under **Our Services**, tap **Edit** on a service to change its name or description. Use **Add Photos** to select one or several pictures from your phone. Choose **Set cover**, add optional captions, and change photo order with drag and drop on desktop or the arrow buttons on any device. Each service can have up to 20 photos.
+3. Under **Our Services**, tap **Edit** on a service to change its name or description. Use **Add Photos** to select one or several pictures from your phone. Choose **Set cover**, add optional captions, and change photo order with drag and drop on desktop or the arrow buttons on any device. There is no fixed photo count per service.
 4. Tap a service photo to view it full size, replace it, or remove it after confirmation. Removing a photo only unlinks it from the website; its stored file is retained. Save Changes publishes the album and its service cover.
 5. On the public site, visitors can open a service to browse its project album. The separate **Project Gallery** remains the overall gallery; use its existing controls to add, reorder, feature or remove those photos.
 6. Tap a homepage thumbnail, then **Replace photo**, and choose a phone photo. Tap a photo to choose it as the homepage cover or featured project.
@@ -112,7 +112,7 @@ For the browser suite, install a Playwright-compatible Chromium on your test mac
 9. Tap **Save Changes**, wait for the saved confirmation, then **View website**. Open public pages show changes on their next load/refresh. **Undo changes** discards unsaved edits.
 10. The permanent owner can remove the temporary editor under **Your access**. Use **Log out** on shared devices. Session tokens are stored by Supabase in that browser; protect the owner email account, ideally with MFA.
 
-Uploads are resized to a maximum 2400-pixel long edge and encoded as WebP at quality 88%, without carrying source filenames or photo GPS metadata. JPEG, PNG and WebP work in modern browsers. HEIC/HEIF requires browser decoding support; if unavailable, the owner gets instructions to export JPEG or use their phone's “Most Compatible” format. Up to 80 general gallery photos and 20 photos per service are supported.
+Uploads are resized to a maximum 2400-pixel long edge and encoded as WebP at quality 88%, without carrying source filenames or photo GPS metadata. JPEG, PNG and WebP work in modern browsers. HEIC/HEIF requires browser decoding support; if unavailable, the owner gets instructions to export JPEG or use their phone's “Most Compatible” format. Service albums and the general gallery have no fixed photo count. Hosting request limits, browser capacity, and Supabase storage quotas still apply.
 
 The public license block appears directly below the homepage hero on a solid background, not behind a photo or only in the footer. License format is checked, **not** its official status. The site never claims “ROC Verified.” Accepted verification hosts are `roc.az.gov`, its subdomains, and the official contractor-search portal `azroc.my.site.com`. The Arizona ROC homepage link is always included in the published license block.
 

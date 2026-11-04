@@ -205,3 +205,30 @@ set role anon;
 select public.test_assert((select content->'license'->>'number' = '001234' and version=7 from public.site_content), 'public visitors see the saved license and current version');
 select public.test_assert((select content->'serviceArea'->>'region' = 'East Valley' from public.site_content), 'public visitors see the published service area');
 reset role;
+
+-- Save beyond both former photo counts and the old 250 KB content ceiling.
+-- Roll back this fixture so the earlier published test content stays unchanged.
+begin;
+set local role authenticated;
+do $$
+declare doc jsonb; photos jsonb; photo_url text := 'https://testproject.supabase.co/storage/v1/object/public/site-photos/11111111-1111-4111-a111-111111111111/33333333-3333-4333-a333-333333333333.webp'; old_version integer; next_version integer;
+begin
+  select content, version into doc, old_version from public.site_content where id=1;
+  select jsonb_agg(jsonb_build_object('id','photo-'||i,'url',photo_url,'caption','')) into photos from generate_series(1,1500) i;
+  doc := jsonb_set(doc, '{services,0,photos}', photos);
+  doc := jsonb_set(doc, '{services,0,image}', to_jsonb(photo_url));
+  doc := jsonb_set(doc, '{services,0,coverPhotoId}', '"photo-1"');
+  doc := jsonb_set(doc, '{gallery}', (select jsonb_agg(jsonb_build_object('id','gallery-'||i,'url',photo_url,'title','Project')) from generate_series(1,100) i));
+  assert octet_length(doc::text)>250000, 'fixture must exceed the old content-size limit';
+  next_version := public.publish_site(doc, old_version);
+  assert next_version=old_version+1, 'large photo collection did not save';
+  assert (select jsonb_array_length(content->'services'->0->'photos')=1500 and jsonb_array_length(content->'gallery')=100 from public.site_content where id=1), 'large photo collection did not persist';
+  begin
+    perform public.publish_site(jsonb_set(doc, '{services,0,photos,1,url}', '"https://evil.test/photo.webp"'), next_version);
+    raise exception 'unsafe URL accepted in large album';
+  exception when invalid_parameter_value then null;
+  end;
+  raise notice 'PASS: 1500 service photos and 100 gallery photos save; unsafe photos still rejected';
+end;
+$$;
+rollback;

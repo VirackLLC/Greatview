@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { MAX_SERVICES, MAX_SERVICE_TITLE_LENGTH, MAX_SERVICE_DESCRIPTION_LENGTH, MAX_SERVICE_PHOTOS, MAX_SERVICE_PHOTO_CAPTION_LENGTH, SERVICE_ICONS, initialServiceArea, normalizeServices, validateServices, validateLicense, validateServiceArea, movePhoto, moveService, moveServicePhoto, setServiceCover, removeServicePhoto, removePhoto } from '../shared/content.mjs';
+import { MAX_SERVICES, MAX_SERVICE_TITLE_LENGTH, MAX_SERVICE_DESCRIPTION_LENGTH, MAX_SERVICE_PHOTO_CAPTION_LENGTH, SERVICE_ICONS, initialServiceArea, normalizeServices, validateServices, validateLicense, validateServiceArea, movePhoto, moveService, moveServicePhoto, setServiceCover, removeServicePhoto, removePhoto } from '../shared/content.mjs';
 import { optimizePhoto } from './photos.js';
 
 const $ = id => document.getElementById(id);
@@ -494,7 +494,7 @@ function serviceAdminCard(service, index) {
   albumTitle.append(albumTitleText, albumHint);
   const addPhotos = button('＋ Add Photos', () => chooseUpload({ section: 'service-photos', key: service.id }), `Add photos to ${label}`);
   addPhotos.className = 'button button-secondary add-service-photos';
-  addPhotos.disabled = service.photos.length >= MAX_SERVICE_PHOTOS || busy;
+  addPhotos.disabled = busy;
   albumHeading.append(albumTitle, addPhotos);
   const uploadFeedback = document.createElement('div');
   uploadFeedback.className = 'service-upload-feedback';
@@ -768,11 +768,6 @@ $('photo-upload').addEventListener('change', async () => {
     ? content.services.find(item => item.id === target.key)
     : null;
   if (target.section === 'service-photos' && !service) return;
-  if (target.section === 'service-photos' && !target.photoId &&
-    service.photos.length + files.length > MAX_SERVICE_PHOTOS) {
-    message('editor-status', `Each service can have up to ${MAX_SERVICE_PHOTOS} project photos.`);
-    return;
-  }
   const serviceCard = service
     ? document.querySelector(`[data-service-id="${service.id}"]`)
     : null;
@@ -784,7 +779,6 @@ $('photo-upload').addEventListener('change', async () => {
   let uploaded = 0;
   try {
     for (const file of files) {
-      if (target.section === 'add-gallery' && content.gallery.length >= 80) throw new Error('Your gallery can hold up to 80 photos.');
       if (progress) progress.value = Math.round(uploaded / files.length * 100);
       if (progressText) progressText.textContent = `Preparing photo ${uploaded + 1} of ${files.length}…`;
       else message('editor-status', `Preparing photo ${uploaded + 1} of ${files.length}…`);
