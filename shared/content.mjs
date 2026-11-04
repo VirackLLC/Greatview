@@ -1,7 +1,6 @@
 export const MAX_SERVICES = 20;
 export const MAX_SERVICE_TITLE_LENGTH = 80;
 export const MAX_SERVICE_DESCRIPTION_LENGTH = 600;
-export const MAX_SERVICE_PHOTOS = 20;
 export const MAX_SERVICE_PHOTO_CAPTION_LENGTH = 160;
 export const SERVICE_ICONS = Object.freeze(['grid', 'sprout', 'mountain', 'droplets', 'pen-tool']);
 export const ORIGINAL_HERO = 'https://res.cloudinary.com/dgxsmxiax/image/upload/v1774069471/7193972578042583984_dprn9i.jpg';
@@ -106,8 +105,8 @@ export function validateServices(services) {
       return `Enter a short description for every service (up to ${MAX_SERVICE_DESCRIPTION_LENGTH} characters).`;
     }
     if (!SERVICE_ICONS.includes(service.icon)) return 'Please check the service details.';
-    if (!Array.isArray(service.photos) || service.photos.length > MAX_SERVICE_PHOTOS) {
-      return `Each service can have up to ${MAX_SERVICE_PHOTOS} project photos.`;
+    if (!Array.isArray(service.photos)) {
+      return 'Please check the project photos for each service.';
     }
     const photoIds = new Set();
     for (const photo of service.photos) {

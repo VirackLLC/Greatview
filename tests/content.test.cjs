@@ -59,16 +59,16 @@ test('service albums preserve their photos, captions, cover, order, and remove s
   assert.ok(validateServices([{ ...service, coverPhotoId: 'not-in-album' }]));
   assert.ok(validateServices([{ ...service, photos: [{ ...originalPhoto, caption: 'c'.repeat(161) }] }]));
 });
-test('service album validation enforces safe URLs, unique IDs, and the photo limit', async () => {
-  const { initialContent, validateServices, MAX_SERVICE_PHOTOS } = await load();
+test('service albums accept more than 20 photos while enforcing safe URLs and unique IDs', async () => {
+  const { initialContent, validateServices } = await load();
   const service = initialContent(data).services[0];
   const original = service.photos[0];
   assert.ok(validateServices([{ ...service, photos: [{ ...original, url: 'https://evil.test/photo.webp' }] }]));
   assert.ok(validateServices([{ ...service, photos: [original, { ...original }] }]));
-  const photos = Array.from({ length: MAX_SERVICE_PHOTOS + 1 }, (_, index) => ({
+  const photos = Array.from({ length: 1500 }, (_, index) => ({
     ...original, id: `album-photo-${index}`
   }));
-  assert.ok(validateServices([{ ...service, photos }]));
+  assert.equal(validateServices([{ ...service, photos, coverPhotoId: photos[0].id }]), '');
 });
 test('service-area validation rejects blank, oversized, and duplicate entries', async () => {
   const { validateServiceArea } = await load();
